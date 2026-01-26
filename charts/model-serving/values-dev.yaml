@@ -1,0 +1,100 @@
+global:
+  namespace: model-serving
+
+ingress:
+  enabled: true
+
+streamlit:
+  enabled: true
+
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui
+    tag: "0.2.0"
+    pullPolicy: IfNotPresent
+
+
+  podSecurityContext:
+    runAsNonRoot: true
+
+  containerSecurityContext:
+    allowPrivilegeEscalation: false
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 300m
+      memory: 512Mi
+
+rag-orchestrator:
+  enabled: true
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
+    tag: "0.1.8"
+  env:
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    QDRANT_URL: http://qdrant:6333
+    QDRANT_COLLECTION: medical_docs
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+  llm:
+    enabled: true
+    baseUrl: "http://153.198.43.222:50503"
+    completionsPath: "/v1/chat/completions"
+    modelId: "mistralai/Mistral-7B-Instruct-v0.2"
+
+redis:
+  enabled: true
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/redis
+    tag: "7.2"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 100m
+      memory: 256Mi
+
+qdrant:
+  enabled: true
+  initJob:
+    enabled: true
+    image:
+      repository: python
+      tag: "3.11-slim"
+      pullPolicy: IfNotPresent
+    vectorSize: "384" # must match with embedding model dimension, mine is BAAI/bge-small-en-v1.5 so it should be 384
+    distance: "Cosine"
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant
+    tag: "1.11.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      cpu: 200m
+      memory: 512Mi
+
+ingestion:
+  enabled: false   # turn ON only when you want to ingest
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor
+    tag: "0.1.2"
+    pullPolicy: IfNotPresent
+
+  embeddingModel: BAAI/bge-small-en-v1.5
+  vectorSize: 384
+  sourceName: medical_corpus
+  patterns: "*.txt,*.md,*.jsonl"
+  chunkSize: 900
+  overlap: 150
+  batchSize: 64

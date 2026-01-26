@@ -1,0 +1,32 @@
+{{- if .Values.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: {{ .Values.namespace }}
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: container
+        paths:
+          - /var/log/containers/*.log
+        processors:
+          # Attach pod / namespace / container labels
+          - add_kubernetes_metadata:
+              host: ${NODE_NAME}
+              matchers:
+                - logs_path:
+                    logs_path: /var/log/containers/
+
+    # global processors
+    processors:
+      - add_host_metadata: ~
+      - add_cloud_metadata: ~
+      # need a few noisy fields to keep indices small
+      - drop_fields:
+          fields: ["agent", "ecs"]
+          ignore_missing: true
+
+    output.logstash:
+      hosts: ["logstash.{{ .Values.namespace }}.svc.cluster.local:5044"]
+{{- end }}

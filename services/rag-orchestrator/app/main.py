@@ -1,0 +1,180 @@
+from uuid import uuid4
+import time
+import os
+
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, Response
+
+from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+
+from .session import SessionStore
+from .health import readiness
+from .logging import log_request
+from .retriever import build_retriever_from_env
+from .prompt import build_prompt
+from .llm_client import build_kserve_client_from_env
+from .schemas import ChatRequest, ChatResponse
+from .metrics import (
+    RAG_CHAT_REQUESTS_TOTAL,
+    RAG_CHAT_ERRORS_TOTAL,
+    RAG_RETRIEVAL_LATENCY_SECONDS,
+    RAG_CONTEXT_TOKENS,
+    RAG_EMPTY_CONTEXT_TOTAL,
+    RAG_GENERATION_LATENCY_SECONDS,
+    RAG_FALLBACK_TOTAL,
+    RAG_INFLIGHT,
+)
+
+app = FastAPI(title="Medical RAG Orchestrator")
+
+# Session store (Redis-backed if configured)
+session_store = SessionStore()
+
+
+# -----------------------
+# Global exception handler
+# -----------------------
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    RAG_CHAT_ERRORS_TOTAL.inc()
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error"},
+    )
+
+
+# -----------------------
+# Health
+# -----------------------
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
+@app.get("/ready")
+def ready():
+    return readiness()
+
+
+# -----------------------
+# Prometheus metrics
+# -----------------------
+@app.get("/metrics")
+def metrics():
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+# -----------------------
+# API logging (only /api)
+# -----------------------
+@app.middleware("http")
+async def api_logging_middleware(request: Request, call_next):
+    # Only log API calls (skip /metrics, /healthz, etc. if you want)
+    if request.url.path.startswith("/api"):
+        start = time.time()
+        request_id = str(uuid4())
+
+        # Attach a state object so handlers can enrich it
+        request.state.request_id = request_id
+
+        response = None
+        try:
+            response = await call_next(request)
+            status_code = getattr(response, "status_code", 500)
+        except Exception as exc:
+            # expose short error for logging; don't leak full trace
+            request.state.error_message = str(exc)
+            status_code = 500
+            raise
+        finally:
+            # Always try to log the request, even if handler raised
+            await log_request(request, status_code, start)
+
+        return response
+
+    # Non-/api paths: just pass through
+    return await call_next(request)
+
+
+# -----------------------
+# Chat endpoint
+# -----------------------
+@app.post("/api/chat", response_model=ChatResponse)
+def chat(req: ChatRequest, request: Request):
+    RAG_CHAT_REQUESTS_TOTAL.inc()
+    RAG_INFLIGHT.inc()
+    try:
+        session_id = req.session_id or str(uuid4())
+        request.state.session_id = session_id
+
+        # append user message
+        session_store.append(session_id, "user", req.message)
+
+        # load chat history
+        history = session_store.get_history(session_id)
+
+        # retrieve context (optional)
+        retriever = build_retriever_from_env()
+        t0 = time.time()
+        chunks = retriever.retrieve(req.message) if retriever else []
+        retrieval_ms = round((time.time() - t0) * 1000.0, 2)
+        RAG_RETRIEVAL_LATENCY_SECONDS.observe(retrieval_ms / 1000.0)
+
+        request.state.retrieval_ms = retrieval_ms
+        request.state.chunks_returned = len(chunks)
+
+        # estimate context tokens (simple heuristic; consistent with retriever)
+        est_tokens = 0
+        for c in chunks:
+            est_tokens += max(1, len(c.text) // 4)
+        RAG_CONTEXT_TOKENS.observe(est_tokens)
+
+        if not chunks:
+            RAG_EMPTY_CONTEXT_TOTAL.inc()
+
+        # build grounded prompt
+        prompt = build_prompt(
+            req.message,
+            chunks,
+            chat_history=history,
+        )
+
+        # generate answer
+        kserve = build_kserve_client_from_env()
+        g0 = time.time()
+        if kserve:
+            max_tokens = int(os.getenv("LLM_MAX_TOKENS", "512"))
+            temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+            answer = kserve.generate(prompt, max_tokens=max_tokens, temperature=temperature)
+        else:
+            # executable fallback without KServe
+            RAG_FALLBACK_TOTAL.inc()
+            if chunks:
+                answer = (
+                    "General information based on available context:\n\n"
+                    + "\n\n".join([f"- {c.text} [source:{c.id}]" for c in chunks[:3]])
+                    + "\n\n(Configure KSERVE_URL for full generation.)"
+                )
+            else:
+                answer = (
+                    "I don't have enough context. "
+                    "Ingest documents into Qdrant first."
+                )
+        llm_ms = round((time.time() - g0) * 1000.0, 2)
+        RAG_GENERATION_LATENCY_SECONDS.observe(llm_ms / 1000.0)
+        request.state.llm_ms = llm_ms
+
+        # append assistant response
+        session_store.append(session_id, "assistant", answer)
+
+        # reload full history
+        history = session_store.get_history(session_id)
+
+        return ChatResponse(
+            session_id=session_id,
+            answer=answer,
+            history=history,
+            context_used=len(chunks),
+        )
+    finally:
+        RAG_INFLIGHT.dec()

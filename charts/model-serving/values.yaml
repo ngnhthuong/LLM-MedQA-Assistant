@@ -1,0 +1,45 @@
+global:
+  namespace: model-serving
+
+# Namespace management
+namespace:
+  create: false
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  path: /
+  annotations: {}
+
+# Default points to Artifact Registry. Override tag per env (dev/prod) or via Jenkins --set.
+streamlit:
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui
+    tag: latest
+    pullPolicy: IfNotPresent
+
+rag-orchestrator:
+  image:
+    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
+    tag: latest
+    pullPolicy: IfNotPresent
+
+# Phase toggles
+redis:
+  enabled: false
+qdrant:
+  enabled: false
+
+ingestion:
+  enabled: false
+  image:
+    repository: ""
+    tag: "latest"
+  dataMount:
+    enabled: false
+    type: "configMap"
+    configMapName: "medical-docs"
+  gcs:
+    enabled: false
+    uri: ""
