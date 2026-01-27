@@ -5,7 +5,7 @@ pipeline {
     // -------- GCP / GKE --------
     GCP_PROJECT   = 'aide1-482206'
     GCP_REGION    = 'us-central1'
-    GKE_CLUSTER   = 'aide1-gke'
+    GKE_CLUSTER   = 'gke-medqa-autopilot'
 
     // -------- Artifact Registry --------
     REGISTRY      = 'us-central1-docker.pkg.dev'
