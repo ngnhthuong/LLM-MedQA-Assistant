@@ -2,102 +2,139 @@ pipeline {
   agent any
 
   environment {
-    PROJECT_ID      = "aide1-482206"
-    REGION          = "us-central1"
-    REGISTRY        = "us-central1-docker.pkg.dev"
-    REPO            = "llm-medqa"
+    // -------- GCP / GKE --------
+    GCP_PROJECT   = 'aide1-482206'
+    GCP_REGION    = 'us-central1'
+    GKE_CLUSTER   = 'aide1-gke'
 
-    // Image versions (change to bump)
-    RAG_VERSION     = "0.1.8"
-    STREAMLIT_VER   = "0.2.0"
-    INGESTOR_VER    = "0.1.2"
+    // -------- Artifact Registry --------
+    REGISTRY      = 'us-central1-docker.pkg.dev'
+    REPO          = 'llm-medqa'
 
-    // Helm
-    HELM_NAMESPACE  = "model-serving"
-    HELM_RELEASE    = "model-serving"
+    // -------- Image versions --------
+    RAG_IMAGE     = "${REGISTRY}/${GCP_PROJECT}/${REPO}/rag-orchestrator"
+    UI_IMAGE      = "${REGISTRY}/${GCP_PROJECT}/${REPO}/streamlit-ui"
+    INGEST_IMAGE  = "${REGISTRY}/${GCP_PROJECT}/${REPO}/qdrant-ingestor"
+
+    IMAGE_TAG     = "${BUILD_NUMBER}"
+
+    // -------- Python --------
+    PYTHONUNBUFFERED = '1'
+  }
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
   }
 
   stages {
 
-    stage("Checkout") {
+    // ------------------------------------------------------------------
+    stage('Checkout') {
       steps {
         checkout scm
       }
     }
 
-    stage("Unit Tests (rag-orchestrator)") {
+    // ------------------------------------------------------------------
+    stage('Unit Tests (rag-orchestrator)') {
       steps {
-        dir("services/rag-orchestrator") {
-          sh """
-            python3 -m venv .venv
+        dir('services/rag-orchestrator') {
+          sh '''
+            python -m venv .venv
             . .venv/bin/activate
+            pip install --upgrade pip
             pip install -r requirements.txt
-            pip install pytest pytest-cov
-            pytest --cov=app --cov-fail-under=80
-          """
+            pytest --cov=app --cov-report=term --cov-fail-under=80
+          '''
         }
       }
     }
 
-    stage("Build & Push rag-orchestrator") {
+    // ------------------------------------------------------------------
+    stage('Authenticate to GCP & GKE') {
       steps {
-        dir("services/rag-orchestrator") {
-          sh """
-            docker build -t ${REGISTRY}/${PROJECT_ID}/${REPO}/rag-orchestrator:${RAG_VERSION} .
-            docker push ${REGISTRY}/${PROJECT_ID}/${REPO}/rag-orchestrator:${RAG_VERSION}
-          """
+        withCredentials([
+          file(credentialsId: 'gcp-jenkins-sa', variable: 'GCP_KEY')
+        ]) {
+          sh '''
+            gcloud auth activate-service-account --key-file="$GCP_KEY"
+            gcloud config set project ${GCP_PROJECT}
+            gcloud auth configure-docker ${REGISTRY} -q
+            gcloud container clusters get-credentials ${GKE_CLUSTER} \
+              --region ${GCP_REGION}
+          '''
         }
       }
     }
 
-    stage("Build & Push streamlit-ui") {
+    // ------------------------------------------------------------------
+    stage('Build & Push rag-orchestrator') {
       steps {
-        dir("services/streamlit-ui") {
-          sh """
-            docker build -t ${REGISTRY}/${PROJECT_ID}/${REPO}/streamlit-ui:${STREAMLIT_VER} .
-            docker push ${REGISTRY}/${PROJECT_ID}/${REPO}/streamlit-ui:${STREAMLIT_VER}
-          """
+        dir('services/rag-orchestrator') {
+          sh '''
+            docker build -t ${RAG_IMAGE}:${IMAGE_TAG} .
+            docker push ${RAG_IMAGE}:${IMAGE_TAG}
+          '''
         }
       }
     }
 
-    stage("Build & Push qdrant-ingestor") {
+    // ------------------------------------------------------------------
+    stage('Build & Push streamlit-ui') {
       steps {
-        dir("services/qdrant-ingestor") {
-          sh """
-            docker build -t ${REGISTRY}/${PROJECT_ID}/${REPO}/qdrant-ingestor:${INGESTOR_VER} .
-            docker push ${REGISTRY}/${PROJECT_ID}/${REPO}/qdrant-ingestor:${INGESTOR_VER}
-          """
+        dir('services/streamlit-ui') {
+          sh '''
+            docker build -t ${UI_IMAGE}:${IMAGE_TAG} .
+            docker push ${UI_IMAGE}:${IMAGE_TAG}
+          '''
         }
       }
     }
 
-    stage("Helm Dependency Build") {
+    // ------------------------------------------------------------------
+    stage('Build & Push qdrant-ingestor') {
       steps {
-        sh """
+        dir('services/qdrant-ingestor') {
+          sh '''
+            docker build -t ${INGEST_IMAGE}:${IMAGE_TAG} .
+            docker push ${INGEST_IMAGE}:${IMAGE_TAG}
+          '''
+        }
+      }
+    }
+
+    // ------------------------------------------------------------------
+    stage('Helm Dependency Build') {
+      steps {
+        sh '''
           helm dependency build charts/model-serving
-        """
+        '''
       }
     }
 
-    stage("Deploy / Upgrade model-serving") {
+    // ------------------------------------------------------------------
+    stage('Deploy / Upgrade model-serving') {
       steps {
-        sh """
-          helm upgrade --install ${HELM_RELEASE} charts/model-serving \
-            -n ${HELM_NAMESPACE} \
+        sh '''
+          helm upgrade --install model-serving charts/model-serving \
+            --namespace model-serving \
+            --create-namespace \
             -f charts/model-serving/values-dev.yaml \
-            --create-namespace
-        """
+            --set images.rag.tag=${IMAGE_TAG} \
+            --set images.ui.tag=${IMAGE_TAG} \
+            --set images.ingestor.tag=${IMAGE_TAG}
+        '''
       }
     }
   }
 
   post {
     success {
-      echo " CI/CD pipeline completed successfully"
+      echo 'Pipeline succeeded — model-serving deployed to GKE'
     }
     failure {
-      echo " Pipeline failed — check test coverage or build logs"
+      echo 'Pipeline failed — check logs above'
     }
   }
 }

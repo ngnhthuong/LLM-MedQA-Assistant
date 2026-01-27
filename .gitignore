@@ -30,3 +30,6 @@ __init__/
 
 # cicd
 ci/env
+
+#gke
+jenkins-gke.json
