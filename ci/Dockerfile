@@ -47,6 +47,10 @@ RUN mkdir -p /usr/share/keyrings \
     && apt-get install -y google-cloud-cli \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y \
+    google-cloud-sdk-gke-gcloud-auth-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
 # ----------------------------
 # Python virtual environment (PEP 668 safe)
 # ----------------------------

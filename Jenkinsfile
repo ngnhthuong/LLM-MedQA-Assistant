@@ -2,23 +2,30 @@ pipeline {
   agent any
 
   environment {
-    // -------- GCP / GKE --------
+    // ---------------- GCP / GKE ----------------
     GCP_PROJECT   = 'aide1-482206'
     GCP_REGION    = 'us-central1'
     GKE_CLUSTER   = 'gke-medqa-autopilot'
 
-    // -------- Artifact Registry --------
+    // ---------------- Artifact Registry ----------------
     REGISTRY      = 'us-central1-docker.pkg.dev'
     REPO          = 'llm-medqa'
 
-    // -------- Image versions --------
+    // ---------------- Image names ----------------
     RAG_IMAGE     = "${REGISTRY}/${GCP_PROJECT}/${REPO}/rag-orchestrator"
     UI_IMAGE      = "${REGISTRY}/${GCP_PROJECT}/${REPO}/streamlit-ui"
     INGEST_IMAGE  = "${REGISTRY}/${GCP_PROJECT}/${REPO}/qdrant-ingestor"
 
-    IMAGE_TAG     = "${BUILD_NUMBER}"
+    // ---------------- Image versions (SOURCE OF TRUTH) ----------------
+    // Bump these intentionally when you want new releases
+    RAG_VERSION   = '0.1.8'
+    UI_VERSION    = '0.2.0'
+    INGEST_VERSION= '0.1.2'
 
-    // -------- Python --------
+    // ---------------- Helm ----------------
+    HELM_RELEASE  = 'model-serving'
+    HELM_NAMESPACE= 'model-serving'
+
     PYTHONUNBUFFERED = '1'
   }
 
@@ -29,19 +36,19 @@ pipeline {
 
   stages {
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Checkout') {
       steps {
         checkout scm
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Unit Tests (rag-orchestrator)') {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            python -m venv .venv
+            python3 -m venv .venv
             . .venv/bin/activate
             pip install --upgrade pip
             pip install -r requirements.txt
@@ -51,7 +58,7 @@ pipeline {
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Authenticate to GCP & GKE') {
       steps {
         withCredentials([
@@ -68,43 +75,43 @@ pipeline {
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Build & Push rag-orchestrator') {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            docker build -t ${RAG_IMAGE}:${IMAGE_TAG} .
-            docker push ${RAG_IMAGE}:${IMAGE_TAG}
+            docker build -t ${RAG_IMAGE}:${RAG_VERSION} .
+            docker push ${RAG_IMAGE}:${RAG_VERSION}
           '''
         }
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Build & Push streamlit-ui') {
       steps {
         dir('services/streamlit-ui') {
           sh '''
-            docker build -t ${UI_IMAGE}:${IMAGE_TAG} .
-            docker push ${UI_IMAGE}:${IMAGE_TAG}
+            docker build -t ${UI_IMAGE}:${UI_VERSION} .
+            docker push ${UI_IMAGE}:${UI_VERSION}
           '''
         }
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Build & Push qdrant-ingestor') {
       steps {
         dir('services/qdrant-ingestor') {
           sh '''
-            docker build -t ${INGEST_IMAGE}:${IMAGE_TAG} .
-            docker push ${INGEST_IMAGE}:${IMAGE_TAG}
+            docker build -t ${INGEST_IMAGE}:${INGEST_VERSION} .
+            docker push ${INGEST_IMAGE}:${INGEST_VERSION}
           '''
         }
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Helm Dependency Build') {
       steps {
         sh '''
@@ -113,17 +120,17 @@ pipeline {
       }
     }
 
-    // ------------------------------------------------------------------
+    // --------------------------------------------------
     stage('Deploy / Upgrade model-serving') {
       steps {
         sh '''
-          helm upgrade --install model-serving charts/model-serving \
-            --namespace model-serving \
+          helm upgrade --install ${HELM_RELEASE} charts/model-serving \
+            --namespace ${HELM_NAMESPACE} \
             --create-namespace \
             -f charts/model-serving/values-dev.yaml \
-            --set images.rag.tag=${IMAGE_TAG} \
-            --set images.ui.tag=${IMAGE_TAG} \
-            --set images.ingestor.tag=${IMAGE_TAG}
+            --set images.rag.tag=${RAG_VERSION} \
+            --set images.ui.tag=${UI_VERSION} \
+            --set images.ingestor.tag=${INGEST_VERSION}
         '''
       }
     }
@@ -131,10 +138,10 @@ pipeline {
 
   post {
     success {
-      echo 'Pipeline succeeded — model-serving deployed to GKE'
+      echo 'CI/CD pipeline succeeded — model-serving deployed to GKE'
     }
     failure {
-      echo 'Pipeline failed — check logs above'
+      echo 'CI/CD pipeline failed — check logs above'
     }
   }
 }
