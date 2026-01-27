@@ -112,6 +112,15 @@ pipeline {
     }
 
     // --------------------------------------------------
+    stage('Helm delete model-serving') {
+      steps {
+        sh '''
+          helm uninstall model-serving -n model-serving
+        '''
+      }
+    }
+
+    // --------------------------------------------------
     stage('Helm Dependency Build') {
       steps {
         sh '''
