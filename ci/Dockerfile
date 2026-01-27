@@ -48,7 +48,7 @@ RUN mkdir -p /usr/share/keyrings \
     && rm -rf /var/lib/apt/lists/*
 
 # ----------------------------
-# Python virtual environment
+# Python virtual environment (PEP 668 safe)
 # ----------------------------
 RUN python3 -m venv /opt/venv \
     && /opt/venv/bin/pip install --no-cache-dir --upgrade pip \
@@ -57,8 +57,15 @@ RUN python3 -m venv /opt/venv \
 ENV PATH="/opt/venv/bin:$PATH"
 
 # ----------------------------
-# Jenkins user setup
+# Jenkins permissions
 # ----------------------------
 RUN usermod -aG docker jenkins
+
+# ----------------------------
+# Runtime declarations
+# ----------------------------
+VOLUME ["/var/jenkins_home"]
+
+EXPOSE 8080 50000
 
 USER jenkins
