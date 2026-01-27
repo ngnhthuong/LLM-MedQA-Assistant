@@ -27,3 +27,6 @@ __init__/
 
 # OS
 .DS_Store
+
+# cicd
+ci/env
