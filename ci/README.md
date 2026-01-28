@@ -28,33 +28,6 @@ All deployments target the `model-serving` namespace.
 
 ---
 
-### What Jenkins does NOT manage
-
-The following are intentionally **not** handled by Jenkins:
-
-- Kubernetes cluster provisioning (Terraform)
-- Ingress controller (`ingress-nginx`)
-- Monitoring stack (Prometheus, Grafana)
-- Logging stack (ELK, Filebeat)
-- Secrets creation (LLM keys, credentials)
-- Data ingestion triggers
-- Environment promotion (dev -> prod)
-
-These components are provisioned manually or via infrastructure tooling and are expected
-to exist before Jenkins runs.
-
----
-
-## Design Principles
-
-- **Infrastructure first, applications second**
-- **No implicit assumptions about cluster state**
-- **No secrets stored in Git or Jenkins**
-- **Application CI/CD must be deterministic and repeatable**
-- **Ingestion is decoupled from deployment**
-
----
-
 ## Pipeline Overview
 
 The CI/CD pipeline is defined in the root-level `Jenkinsfile`.
@@ -67,8 +40,3 @@ High-level stages:
 4. Docker image build
 5. Image push to Artifact Registry
 6. Helm upgrade to `model-serving` namespace
-
-Deployments are performed using:
-
-```bash
-helm upgrade --install
