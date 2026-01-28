@@ -26,14 +26,16 @@
 - [Guide to run](#guide-to-run)
 - [Conclusion](#conclusion)
 - [Reference](#reference)
-
+---
 ## Introduction
 LLM-MedQA-Assisstant is a cloud-native Medical Question Answering platform bulit around a scalable Retrieval-Agumented Generation (RAG) architecture. The system in tegrates a Streamlit frontend, a FastAPI-based RAG orchestrator, Qdrant vector search for medical knowledge retrieval, and an external fine-tuned medical LLM inference server, with Redis-backed chta history for multi-run conversations. The entire stack is developed on Kubernetes, automated by Terraform, Helm and Jenkins CI/CD, and fully observable through Prometheus, Grafana, and ELK logging pipeline.  
 > This repository demonstrates an end-to-end workflow, from git commit and containerized builds to monitored, scalable inference, suitable for well clinical decision support and medical education.  
+---
+## Target-audience  
 
-## Target-audience
 This repo is well suited to individuals who's learning MLOPs, and everyone on the journey of becomming ML/LLM engineers.  
 
+---
 ## Repo structure
 ```code
 LLM-MedQA-Assistant
@@ -177,10 +179,11 @@ LLM-MedQA-Assistant
 ├── Jenkinsfile                               # CI/CD pipeline definition
 └── README.md                                 # Project documentation and setup guide
 ```
-
+---
 ## Guide to setup
 > Quick note: you should create google account platform and start using on free-trial (they provdes roughly 300$ within 90 days), which is good approach to learn and explore.  
 
+---
 ### Set up cluster with gke standard
 This step provides the Google Cloud infrastructure requried to run the MedQA plaform, including networking and a Kubernetes (GKE) environment. 
 1. **Authenticate with Google Cloud**  
@@ -206,6 +209,8 @@ gcloud compute networks subnets delete gke-medqa-subnet \
   --region=us-central1 \
   --project=aide1-482206
 ```
+
+---
 ### Get kubeconfig and verify cluster ownership
 After provisioning the infrastructure, this steps configures local environment to authenticate with GKE cluster and verifies that you have correct access to Kubernetes control plan  
 1. **Get Kubernetes Credentials**  
@@ -220,6 +225,8 @@ gcloud container clusters get-credentials gke-medqa-autopilot \
 kubectl get nodes
 kubectl get namespaces
 ```
+
+---
 ### Create Artifact Registry
 This step sets up Docker Artifact Registry in Google Cloud to store and manage container images for all MedQA services (UI, RAG orchestrator, Ingestor). Using Artifact Registry ensures secure, regional, and scalable image storage integrated with GKE and CI/CD pipelines.
 1. **Create Artifact Registry Repository**  
@@ -233,6 +240,8 @@ gcloud artifacts repositories create llm-medqa \
 ```code
 gcloud artifacts repositories list
 ```
+
+---
 ### Buid Redis image
 Redis is used as the session and chat-history store for multi-run conversations in MedQA system. This steps builds a custom Redis image with persistence enable and pushes it to project's artifact registry so it can be pulled during deployment.  
 > Note: The Dockerfile.redis already exists in this repository. No additional file creation is required.  
@@ -258,6 +267,8 @@ docker tag redis-custom:7.2 \
 ```code
 docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/redis:7.2
 ```
+
+---
 ### Buid Qdrant image
 Qdrant is used as the vector database for semantic retrieval in the MedQA RAG pipeline. This steps builds a custom Qdrant image and pushes it to the project's Artifact Registry so it can be pulled during deployment
 > Note: The Dockerfile.qdrant already exists in this repository. No additional file creation is required.
@@ -282,6 +293,7 @@ docker tag qdrant-custom:1.11.0 \
 docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant:1.11.0
 ```
 
+---
 ### Buid Streamlit image
 The streamlit is used as a frontend for the MedQA system, providing an interactive chat interface for medical question answering.
 1. **Build Streamlit UI Image**  
@@ -299,6 +311,7 @@ docker tag streamlit-ui:0.2.0 \
 docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui:0.2.0
 ```
 
+---
 ### Buid rag-orchestrator image
 The RAG Orchestrator is the core backend service of the MedQA platform. It coordinates request handling, vector retrieval from Qdrant, prompt construction, calls to the external medical LLM inference server, and session management via Redis.
 1. **Build RAG Orchestrator Image**  
@@ -311,6 +324,8 @@ docker build -f Dockerfile \
 ```
 docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator:0.1.8
 ```
+
+---
 ### Buid ingestion image
 The Qdrant Ingestor is responsible for embedding medical documents and indexing them into the Qdrant vector database. This service enables semantic retrieval by transforming raw medical data into searchable vector used by RAG pipeline.
 1. **Build Qdrant Ingestor Image**  
@@ -327,6 +342,8 @@ docker tag qdrant-ingestor:0.1.2 \
 ```code
 docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor:0.1.2
 ```
+
+---
 ### Create configmap
 Document ingestion is a computational expensive operation (embedding + vector indexing) and should not be triggered on every deployment.  
 For this reason, ingestion is designed as an explicit, on demand process, decoupled from normal service upgrades.
@@ -400,6 +417,7 @@ To ingest new or updated medical data, follow this sequence exactly:
     ```code
     helm upgrade
     ```
+---
 
 ### Deploy ingress-nginx namespace
 The NGINX Ingress Controller is reponsible for exposing internal Kubernetes services to external traffic and routing HTTP requests to the appropriate backend services
@@ -432,6 +450,8 @@ kubectl get svc -n ingress-nginx
 kubectl logs -n ingress-nginx deploy/ingress-nginx-controller
 kubectl get endpoints -n ingress-nginx ingress-nginx-controller-admission
 ```
+---
+
 ### Deploy External LLM Inference Service (GPU via Vast.ai)
 Large Language Model inference requires GPU acceleration, which is not available in this project’s GCP environment due to free-trial limitations. To decouple inference from the Kubernetes cluster and avoid cloud GPU constraints, an external GPU-based inference server is provisioned using Vast.ai.  
 This design avoid:
@@ -514,6 +534,7 @@ kubectl get secret llm-secrets -n model-serving
 ```code
 kubectl delete secret llm-secrets -n model-serving
 ```
+---
 
 ### Deploy model-serving namespace
 This step deploys all core MedQA services into the Kubernetes cluster using Helm, including the Streamlit UI, RAG orchestrator, Redis, Qdrant, and ingestion jobs. The deployment is performed in a dedicated `model-serving` namespace to isolate application workloads from system components.
@@ -531,6 +552,7 @@ helm install model-serving charts/model-serving \
 ```code
 helm uninstall model-serving -n model-serving
 ```
+---
 
 ### Deploy monitoring namespace
 This step installs the monitoring and observability stack for the MedQA platform. Prometheus is used to scrape metrics from services, while Grafana provides dashboards and visualization for system health, performance, and LLM-specific metrics.
@@ -584,6 +606,8 @@ Token usage growth:
 rate(llm_prompt_tokens_total[5m])
 rate(llm_completion_tokens_total[5m])
 ```
+---
+
 ### Deploy logging namespace
 This step installs the centralized logging stack for the MedQA platform. The logging namespace collects, stores, and visualizes logs from Kubernetes workloads and system components, enabling effective debugging, auditing, and operational monitoring.
 1. **Install Logging Stack**  
@@ -608,6 +632,8 @@ kubectl port-forward -n logging svc/kibana 5601:5601
 kubectl delete namespace logging --wait=true
 ```
 =>This concludes the end-to-end setup process.
+
+---
 ### Deploy Jenkin
 This step sets up a **self-hosted Jenkins** server with Docker support to automate image builds, pushes to Artifact Registry, and Kubernetes deployments. Jenkins runs as a Docker container with access to the host Docker daemon, enabling fully containerized CI/CD workflows.  
 >Quick start: commit the current repo in your github. Also, create personal access token (classic)
@@ -716,15 +742,17 @@ Add credentials
 ![](assets/imgs/github_credential.png)
 
 16. **Commit and push 1 branch, observe the jenkins pipeline**
+
+---
 ## Guide to run
 To open Streamlit, get IP exposed by ingress-nginx
 ``` code
 kubectl get svc -n ingress-nginx
 ```
 ![](assets/imgs/Open_Streamlit.png)
-
+---
 ## Conclusion
 This repository demonstrates an end-to-end, production-grade LLM-powered Medical Question Answering platform, designed with real-world constraints, scalability, and operational reliability in mind. Rather than focusing solely on model inference, the system emphasizes full lifecycle engineering—from infrastructure provisioning and CI/CD automation to observability, controlled data ingestion, and modular deployment.
-
+---
 ## Reference
 This repo idea is inspired by various projects from section `Hall of frame` of the community named "FSDS", check out their page: [LINK](https://fullstackdatascience.com/hall-of-fame)
