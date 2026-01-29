@@ -47,14 +47,14 @@ LLM-MedQA-Assistant
 │   │   │   ├── elasticsearch-svc.yaml        # Service definition for Elasticsearch
 │   │   │   ├── elasticsearch.yaml            # Elasticsearch StatefulSet/Deployment
 │   │   │   ├── filebeat-config.yaml          # Filebeat configuration for log shipping
+│   │   │   ├── filebeat-rbac.yaml            # Filebeat RBAC
 │   │   │   ├── filebeat-serviceaccount.yaml  # ServiceAccount for Filebeat
 │   │   │   ├── filebeat.yaml                 # Filebeat DaemonSet
 │   │   │   ├── kibana-svc.yaml               # Service exposing Kibana
 │   │   │   ├── kibana.yaml                   # Kibana Deployment
 │   │   │   ├── logstash-config.yaml          # Logstash pipeline configuration
 │   │   │   ├── logstash-svc.yaml             # Service exposing Logstash
-│   │   │   ├── logstash.yaml                 # Logstash Deployment
-│   │   │   └── namespace.yaml                # Dedicated namespace for logging stack
+│   │   │   └── logstash.yaml                 # Logstash Deployment
 │   │   ├── Chart.yaml                        # Helm chart metadata for logging stack
 │   │   └── values.yaml                       # Default values for ELK deployment
 │   │
