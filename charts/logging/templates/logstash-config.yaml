@@ -40,7 +40,7 @@ data:
     output {
       elasticsearch {
         hosts => ["http://elasticsearch.logging.svc.cluster.local:9200"]
-        index => "logs-%{+YYYY.MM.dd}"
+        index => "filebeat-%{+YYYY.MM.dd}"
       }
     }
 {{- end }}
