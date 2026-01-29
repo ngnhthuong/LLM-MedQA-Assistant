@@ -25,6 +25,13 @@ rag-orchestrator:
     tag: latest
     pullPolicy: IfNotPresent
 
+  # Surface HPA config from the subchart
+  hpa:
+    enabled: false          # default off in base chart
+    minReplicas: 1
+    maxReplicas: 3
+    targetCPUUtilizationPercentage: 80
+
 # Phase toggles
 redis:
   enabled: false

@@ -50,6 +50,12 @@ rag-orchestrator:
     completionsPath: "/v1/chat/completions"
     modelId: "mistralai/Mistral-7B-Instruct-v0.2"
 
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilizationPercentage: 70
+
 redis:
   enabled: true
   image:
