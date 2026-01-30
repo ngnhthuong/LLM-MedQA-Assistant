@@ -7,6 +7,9 @@ from fastapi.responses import JSONResponse, Response
 
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 
+# -----------------------
+# Internal modules
+# -----------------------
 from .session import SessionStore
 from .health import readiness
 from .logging import log_request
@@ -25,56 +28,28 @@ from .metrics import (
     RAG_INFLIGHT,
 )
 
-# ---------------------------------------------------------------------
-# add OpenTelemetry imports
-# ---------------------------------------------------------------------
+# -----------------------
+# Tracing (single source)
+# -----------------------
 from opentelemetry import trace
-from opentelemetry import trace as otel_trace
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
-from opentelemetry.instrumentation.requests import RequestsInstrumentor
-from opentelemetry.instrumentation.redis import RedisInstrumentor
-from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
+from .tracing import setup_tracing
 
-
+# -----------------------
+# App bootstrap
+# -----------------------
 app = FastAPI(title="Medical RAG Orchestrator")
 
-# ---------------------------------------------------------------------
-# OpenTelemetry setup
-# ---------------------------------------------------------------------
-def setup_tracing(app: FastAPI):
-    service_name = os.getenv("OTEL_SERVICE_NAME", "rag-orchestrator")
-    otlp_endpoint = os.getenv(
-        "OTEL_EXPORTER_OTLP_ENDPOINT",
-        "http://otel-collector.tracing.svc.cluster.local:4317",
-    )
+setup_tracing(
+    app=app,
+    service_name="rag-orchestrator",
+)
 
-    provider = TracerProvider(
-        resource=Resource.create({"service.name": service_name})
-    )
-    trace.set_tracer_provider(provider)
-
-    exporter = OTLPSpanExporter(endpoint=otlp_endpoint, insecure=True)
-    provider.add_span_processor(BatchSpanProcessor(exporter))
-
-    FastAPIInstrumentor.instrument_app(
-        app,
-        excluded_urls="/metrics|/health|/ready",
-    )
-    RequestsInstrumentor().instrument()
-    RedisInstrumentor().instrument()
-    HTTPXClientInstrumentor().instrument()
-
-
-setup_tracing(app)
 tracer = trace.get_tracer("rag-orchestrator")
 
-# Session store (Redis-backed if configured)
+# -----------------------
+# Session store
+# -----------------------
 session_store = SessionStore()
-
 
 # -----------------------
 # Global exception handler
@@ -87,7 +62,6 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "Internal Server Error"},
     )
 
-
 # -----------------------
 # Health
 # -----------------------
@@ -95,11 +69,9 @@ async def global_exception_handler(request: Request, exc: Exception):
 def health():
     return {"status": "ok"}
 
-
 @app.get("/ready")
 def ready():
     return readiness()
-
 
 # -----------------------
 # Prometheus metrics
@@ -108,9 +80,8 @@ def ready():
 def metrics():
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
-
 # -----------------------
-# API logging (only /api)
+# API logging middleware
 # -----------------------
 @app.middleware("http")
 async def api_logging_middleware(request: Request, call_next):
@@ -119,8 +90,8 @@ async def api_logging_middleware(request: Request, call_next):
         request_id = str(uuid4())
         request.state.request_id = request_id
 
-        # add trace - log correlation
-        span = otel_trace.get_current_span()
+        # trace ↔ log correlation
+        span = trace.get_current_span()
         ctx = span.get_span_context()
         if ctx and ctx.is_valid:
             request.state.trace_id = format(ctx.trace_id, "032x")
@@ -144,7 +115,6 @@ async def api_logging_middleware(request: Request, call_next):
 
     return await call_next(request)
 
-
 # -----------------------
 # Chat endpoint
 # -----------------------
@@ -154,22 +124,22 @@ def chat(req: ChatRequest, request: Request):
     RAG_INFLIGHT.inc()
 
     try:
-        # add root span for the request
         with tracer.start_as_current_span("rag.chat") as root_span:
             session_id = req.session_id or str(uuid4())
             request.state.session_id = session_id
             root_span.set_attribute("session.id", session_id)
 
-            # append user message
+            # -----------------------
+            # Persist user message
+            # -----------------------
             session_store.append(session_id, "user", req.message)
-
-            # load chat history
             history = session_store.get_history(session_id)
 
-            # retrieve context (optional)
+            # -----------------------
+            # Retrieval
+            # -----------------------
             retriever = build_retriever_from_env()
 
-            # add retrieval span wrapping existing logic
             with tracer.start_as_current_span("retrieval.vector_search") as span:
                 span.set_attribute("vector.db", "qdrant")
                 span.set_attribute(
@@ -191,26 +161,29 @@ def chat(req: ChatRequest, request: Request):
             request.state.retrieval_ms = retrieval_ms
             request.state.chunks_returned = len(chunks)
 
-            # estimate context tokens
-            est_tokens = 0
-            for c in chunks:
-                est_tokens += max(1, len(c.text) // 4)
+            # -----------------------
+            # Context metrics
+            # -----------------------
+            est_tokens = sum(max(1, len(c.text) // 4) for c in chunks)
             RAG_CONTEXT_TOKENS.observe(est_tokens)
 
             if not chunks:
                 RAG_EMPTY_CONTEXT_TOTAL.inc()
 
-            # build grounded prompt
+            # -----------------------
+            # Prompt
+            # -----------------------
             prompt = build_prompt(
                 req.message,
                 chunks,
                 chat_history=history,
             )
 
-            # generate answer
+            # -----------------------
+            # LLM inference
+            # -----------------------
             kserve = build_kserve_client_from_env()
 
-            # add LLM inference span
             with tracer.start_as_current_span("llm.inference") as span:
                 span.set_attribute("llm.provider", "kserve")
                 span.set_attribute(
@@ -233,7 +206,8 @@ def chat(req: ChatRequest, request: Request):
                         answer = (
                             "General information based on available context:\n\n"
                             + "\n\n".join(
-                                [f"- {c.text} [source:{c.id}]" for c in chunks[:3]]
+                                f"- {c.text} [source:{c.id}]"
+                                for c in chunks[:3]
                             )
                             + "\n\n(Configure KSERVE_URL for full generation.)"
                         )
@@ -248,10 +222,10 @@ def chat(req: ChatRequest, request: Request):
             RAG_GENERATION_LATENCY_SECONDS.observe(llm_ms / 1000.0)
             request.state.llm_ms = llm_ms
 
-            # append assistant response
+            # -----------------------
+            # Persist assistant reply
+            # -----------------------
             session_store.append(session_id, "assistant", answer)
-
-            # reload full history
             history = session_store.get_history(session_id)
 
             return ChatResponse(
@@ -260,5 +234,6 @@ def chat(req: ChatRequest, request: Request):
                 history=history,
                 context_used=len(chunks),
             )
+
     finally:
         RAG_INFLIGHT.dec()
