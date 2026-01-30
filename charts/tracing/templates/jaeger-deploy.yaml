@@ -27,8 +27,8 @@ spec:
             - name: query
               containerPort: 16686
             - name: collector-grpc
-              containerPort: 14250
+              containerPort: 4317
             - name: collector-http
-              containerPort: 14268
+              containerPort: 4318
           resources:
             {{- toYaml .Values.jaeger.resources | nindent 12 }}

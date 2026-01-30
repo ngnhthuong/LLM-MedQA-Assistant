@@ -3,7 +3,7 @@ import os
 from opentelemetry import trace
 from opentelemetry.sdk.resources import Resource
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
@@ -41,8 +41,9 @@ def setup_tracing(app, service_name: str) -> None:
 
     exporter = OTLPSpanExporter(endpoint=endpoint)
 
-    provider.add_span_processor(BatchSpanProcessor(exporter))
-
+    # provider.add_span_processor(BatchSpanProcessor(exporter))
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    
     # Create HTTP server spans for FastAPI routes
     FastAPIInstrumentor.instrument_app(
         app,

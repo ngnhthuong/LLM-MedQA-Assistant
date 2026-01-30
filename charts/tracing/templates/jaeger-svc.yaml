@@ -11,11 +11,11 @@ spec:
     app: jaeger
   ports:
     - name: query
-      port: {{ .Values.jaeger.service.queryPort }}
+      port: 16686
       targetPort: 16686
     - name: collector-grpc
-      port: {{ .Values.jaeger.service.collectorGrpcPort }}
-      targetPort: 14250
+      port: 4317
+      targetPort: 4317
     - name: collector-http
-      port: {{ .Values.jaeger.service.collectorHttpPort }}
-      targetPort: 14268
+      port: 4318
+      targetPort: 4318

@@ -8,23 +8,23 @@ data:
     receivers:
       otlp:
         protocols:
-          grpc:
           http:
+            endpoint: 0.0.0.0:4318
+          grpc:
+            endpoint: 0.0.0.0:4317
 
     processors:
       batch:
 
     exporters:
       otlp/jaeger:
-        endpoint: jaeger.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.jaeger.service.collectorGrpcPort }}
+        endpoint: jaeger.{{ .Values.namespace }}.svc.cluster.local:4317
         tls:
           insecure: true
-      logging:
-        loglevel: warn
 
     service:
       pipelines:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp, jaeger]
+          exporters: [otlp/jaeger]

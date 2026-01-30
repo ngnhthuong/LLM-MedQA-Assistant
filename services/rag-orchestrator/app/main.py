@@ -98,14 +98,13 @@ async def api_logging_middleware(request: Request, call_next):
         request.state.request_id = request_id
 
         # Trace/log correlation
-        span = otel_trace.get_current_span()
-        ctx = span.get_span_context()
-        if ctx and ctx.is_valid:
+        with tracer.start_as_current_span(
+            f"http {request.method} {request.url.path}"
+        ) as span:
+            ctx = span.get_span_context()
             request.state.trace_id = format(ctx.trace_id, "032x")
             request.state.span_id = format(ctx.span_id, "016x")
-        else:
-            request.state.trace_id = None
-            request.state.span_id = None
+            response = await call_next(request)
 
         response = None
         try:
