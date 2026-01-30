@@ -15,7 +15,7 @@ data:
       batch:
 
     exporters:
-      otlp:
+      otlp/jaeger:
         endpoint: jaeger.{{ .Values.namespace }}.svc.cluster.local:{{ .Values.jaeger.service.collectorGrpcPort }}
         tls:
           insecure: true
@@ -27,4 +27,4 @@ data:
         traces:
           receivers: [otlp]
           processors: [batch]
-          exporters: [otlp, logging]
+          exporters: [otlp, jaeger]
