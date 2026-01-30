@@ -26,7 +26,7 @@ from .metrics import (
 )
 
 # ---------------------------------------------------------------------
-# 🔵 ADDED: OpenTelemetry imports
+# add OpenTelemetry imports
 # ---------------------------------------------------------------------
 from opentelemetry import trace
 from opentelemetry import trace as otel_trace
