@@ -16,7 +16,7 @@ jaeger:
   service:
     type: ClusterIP
     queryPort: 16686
-    collectorGrpcPort: 14250
+    collectorGrpcPort: 4317
     collectorHttpPort: 14268
   resources:
     requests:
