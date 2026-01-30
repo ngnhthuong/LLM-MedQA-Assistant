@@ -22,6 +22,7 @@
     - [Deploy model-serving namespace](#deploy-model-serving-namespace)
     - [Deploy monitoring namespace](#deploy-monitoring-namespace)
     - [Deploy logging namespace](#deploy-logging-namespace)
+    - [Deploy tracing](#deploy-tracing)
     - [Deploy Jenkin](#deploy-jenkin)
 - [Guide to run](#guide-to-run)
 - [Conclusion](#conclusion)
@@ -124,6 +125,17 @@ LLM-MedQA-Assistant
 │   │   ├── Chart.yaml                        # Streamlit chart metadata
 │   │   └── values.yaml                       # UI configuration
 │   │
+│   ├── tracing                               # Distributed tracing stack (OpenTelemetry + Jaeger).
+│   │   ├── templates
+│   │   │   ├── namespace.yaml                # tracing namespace
+│   │   │   ├── otel-collector-config.yaml    # Receivers/exporters
+│   │   │   ├── otel-collector-deploy.yaml    # Collector Deployment
+│   │   │   ├── otel-collector-svc.yaml       # Collector Service
+│   │   │   ├── jaeger-deploy.yaml            # Jaeger backend
+│   │   │   └── jaeger-svc.yaml               # Jaeger UI + OTLP
+│   │   ├── Chart.yaml                        # tracing chart metadata
+│   │   └── values.yaml                       # tracing configuration
+│   │
 │   └── README.md                             # Helm charts documentation
 │
 ├── ci                                        # CI/CD-related configuration
@@ -155,7 +167,8 @@ LLM-MedQA-Assistant
 │   │   │   ├── prompt.py                     # Prompt construction logic
 │   │   │   ├── retriever.py                  # Vector retrieval from Qdrant
 │   │   │   ├── schemas.py                    # Request/response schemas
-│   │   │   └── session.py                    # Redis-backed session management
+│   │   │   ├── session.py                    # Redis-backed session management
+│   │   │   └── tracing.py                    # OpenTelemetry instrumentation
 │   │   ├── tests                             # Unit tests for RAG components
 │   │   ├── Dockerfile                        # RAG orchestrator image definition
 │   │   ├── pytest.ini                        # Pytest configuration
@@ -164,7 +177,8 @@ LLM-MedQA-Assistant
 │   └── streamlit-ui                          # Frontend UI service
 │       ├── app.py                            # Streamlit application entrypoint
 │       ├── Dockerfile                        # UI image definition
-│       └── requirements.txt                  # UI dependencies
+│       ├── requirements.txt                  # UI dependencies
+│       └── tracing.py                        # OpenTelemetry instrumentation
 │
 ├── terraform                                 # Infrastructure-as-Code (GCP)
 │   ├── main.tf                               # Core Terraform resources (VPC, GKE)
@@ -633,6 +647,22 @@ kubectl delete namespace logging --wait=true
 ```
 =>This concludes the end-to-end setup process.
 
+---
+### Deploy tracing
+This steps installs a tracing feature that tracks multiple services in the system. Tracing is implemented using OpenTelemetry and Jaeger  
+1. **Build Helm Chart Dependencies**  
+```code
+helm dependency update charts/tracing
+```
+2. **Install tracing**  
+```code
+helm upgrade --install tracing charts/tracing --namespace tracing --create-namespace
+```
+3. **Verify and access Jaeger**  
+```code
+kubectl get pods -n tracing
+kubectl port-forward -n tracing deploy/jaeger 16686:16686
+```
 ---
 ### Deploy Jenkin
 This step sets up a **self-hosted Jenkins** server with Docker support to automate image builds, pushes to Artifact Registry, and Kubernetes deployments. Jenkins runs as a Docker container with access to the host Docker daemon, enabling fully containerized CI/CD workflows.  

@@ -96,8 +96,20 @@ Provides **metrics collection and visualization** for workloads and infrastructu
 | grafana-* | Deployment | Metrics visualization | Stateless UI | Prometheus | HTTP queries |
 
 ---
+## 6. Tracing Namespace (Distributed Tracing)
+### Purpose
+The `tracing` namespace provides **distributed tracing** for the LLM-MedQA-Assistant platform. It enables end-to-end visibility of a single user request as it flows from the **Streamlit UI**, through the **RAG Orchestrator**, and (optionally in the future) to the **external inference service**.
 
-## 6. Service Topology
+### Pods
+### Tracing Namespace Pods
+
+| Pod | Pod Type | What it does | Why this type | Communicates with | How it communicates |
+|---|---|---|---|---|---|
+| `otel-collector-*` | Deployment | Receives, processes, and exports distributed traces | Stateless component that can be horizontally scaled and restarted safely | Streamlit UI, RAG Orchestrator, Jaeger | OTLP over HTTP (4318) and gRPC (4317) |
+| `jaeger-*` | Deployment | Stores and visualizes trace data; provides Jaeger UI | Stateless query and UI service with no application-owned persistent state | OpenTelemetry Collector, users (via browser) | OTLP gRPC from collector; HTTP (16686) for UI |
+---
+
+## 7. Service Topology
 
 | Component | Namespace | Service Name | Service Type | Purpose |
 |---------|----------|--------------|--------------|--------|
@@ -110,6 +122,8 @@ Provides **metrics collection and visualization** for workloads and infrastructu
 | Kibana | logging | kibana | ClusterIP | Log visualization |
 | Prometheus | monitoring | prometheus | ClusterIP | Metrics backend |
 | Grafana | monitoring | grafana | ClusterIP | Metrics UI |
+| OpenTelemetry Collector | tracing | otel-collector | ClusterIP | Receives and forwards to the tracing backend |
+| Jaeger | tracing | jaeger | ClusterIP | Provides Jaeger Web UI |
 
 **Design Choice:**  
 All services are **ClusterIP**.  
@@ -117,7 +131,7 @@ External exposure is handled **only by Ingress**, not by LoadBalancers per servi
 
 ---
 
-## 7. Workload Type Comparison
+## 8. Workload Type Comparison
 
 | Criteria | Deployment | StatefulSet | DaemonSet |
 |--------|------------|------------|-----------|
@@ -130,13 +144,12 @@ External exposure is handled **only by Ingress**, not by LoadBalancers per servi
 
 ---
 
-## 8. Architectural Summary
+## 9. Architectural Summary
 
 - **Clear separation of concerns by namespace**
 - **Ingress-only external exposure**
 - **Stateful components isolated and minimal**
 - **Observability treated as first-class (logs + metrics)**
-- **Ready for future NetworkPolicy hardening**
 
 This layout reflects **Kubernetes design** and supports scalability, observability, and maintainability.
 
