@@ -46,7 +46,7 @@ rag-orchestrator:
       memory: 512Mi
   llm:
     enabled: true
-    baseUrl: "http://222.230.13.166:54499"
+    baseUrl: "http://62.61.168.144:43993"
     completionsPath: "/v1/chat/completions"
     modelId: "mistralai/Mistral-7B-Instruct-v0.2"
 
