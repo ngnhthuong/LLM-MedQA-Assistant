@@ -18,6 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # ---- Copy app ----
 COPY app.py .
+COPY tracing.py .
 
 # ---- Streamlit runtime config ----
 ENV STREAMLIT_SERVER_PORT=8501

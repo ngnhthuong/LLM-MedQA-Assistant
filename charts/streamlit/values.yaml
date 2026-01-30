@@ -4,9 +4,6 @@ image:
   tag: latest
   pullPolicy: IfNotPresent
 
-# env:
-#   RAG_API_URL: "http://rag-orchestrator:8000"
-
 resources:
   requests:
     cpu: 50m
@@ -24,9 +21,6 @@ containerSecurityContext:
   allowPrivilegeEscalation: false
   capabilities:
     drop: ["ALL"]
-
-# nodeSelector:
-#   node-type: cpu
 
 tolerations: []
 
