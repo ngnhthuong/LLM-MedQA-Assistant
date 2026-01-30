@@ -100,7 +100,16 @@ spec:
 
             - name: RAG_DEDUPLICATE
               value: "{{ .Values.rag.deduplicate }}"
-
+            # -----------------------------
+            # Trace parameters
+            # -----------------------------
+            - name: OTEL_SERVICE_NAME
+              value: rag-orchestrator
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: http://otel-collector.tracing.svc.cluster.local:4317
+            - name: OTEL_EXCLUDED_URLS
+              value: /metrics|/health|/ready
+              
           readinessProbe:
             httpGet:
               path: /ready

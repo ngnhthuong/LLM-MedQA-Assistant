@@ -1,180 +1,189 @@
-from uuid import uuid4
-import time
 import os
-
+import time
+import uuid
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse
 
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
+from opentelemetry import trace
+from opentelemetry import trace as otel_trace
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.instrumentation.requests import RequestsInstrumentor
+from opentelemetry.instrumentation.redis import RedisInstrumentor
+from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 
-from .session import SessionStore
-from .health import readiness
-from .logging import log_request
-from .retriever import build_retriever_from_env
-from .prompt import build_prompt
-from .llm_client import build_kserve_client_from_env
-from .schemas import ChatRequest, ChatResponse
-from .metrics import (
-    RAG_CHAT_REQUESTS_TOTAL,
-    RAG_CHAT_ERRORS_TOTAL,
-    RAG_RETRIEVAL_LATENCY_SECONDS,
-    RAG_CONTEXT_TOKENS,
-    RAG_EMPTY_CONTEXT_TOTAL,
-    RAG_GENERATION_LATENCY_SECONDS,
-    RAG_FALLBACK_TOTAL,
-    RAG_INFLIGHT,
+from schemas import ChatRequest, ChatResponse
+from retriever import Retriever
+from llm_client import KServeLLMClient
+from session import SessionStore
+from logging import api_logger
+from metrics import (
+    CHAT_REQUEST_COUNT,
+    CHAT_LATENCY,
 )
 
-app = FastAPI(title="Medical RAG Orchestrator")
-
-# Session store (Redis-backed if configured)
-session_store = SessionStore()
-
-
-# -----------------------
-# Global exception handler
-# -----------------------
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    RAG_CHAT_ERRORS_TOTAL.inc()
-    return JSONResponse(
-        status_code=500,
-        content={"detail": "Internal Server Error"},
+# OpenTelemetry setup
+def setup_tracing(app: FastAPI):
+    service_name = os.getenv("OTEL_SERVICE_NAME", "rag-orchestrator")
+    otlp_endpoint = os.getenv(
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+        "http://otel-collector.tracing.svc.cluster.local:4317",
     )
 
+    resource = Resource.create({"service.name": service_name})
 
-# -----------------------
+    provider = TracerProvider(resource=resource)
+    trace.set_tracer_provider(provider)
+
+    exporter = OTLPSpanExporter(
+        endpoint=otlp_endpoint,
+        insecure=True,
+    )
+
+    provider.add_span_processor(BatchSpanProcessor(exporter))
+
+    # Auto-instrument inbound + outbound
+    FastAPIInstrumentor.instrument_app(
+        app,
+        excluded_urls="/metrics|/health|/ready",
+    )
+    RequestsInstrumentor().instrument()
+    RedisInstrumentor().instrument()
+    HTTPXClientInstrumentor().instrument()
+
+
+
+# App init
+app = FastAPI(title="RAG Orchestrator")
+
+setup_tracing(app)
+tracer = trace.get_tracer("rag-orchestrator")
+
+retriever = Retriever() if os.getenv("ENABLE_RETRIEVER", "true") == "true" else None
+kserve = KServeLLMClient()
+sessions = SessionStore()
+
+
+
+# Middleware: logging + trace correlation
+@app.middleware("http")
+async def api_logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
+
+    # Attach trace info to request.state for log correlation
+    span = otel_trace.get_current_span()
+    ctx = span.get_span_context()
+    if ctx and ctx.is_valid:
+        request.state.trace_id = format(ctx.trace_id, "032x")
+        request.state.span_id = format(ctx.span_id, "016x")
+    else:
+        request.state.trace_id = None
+        request.state.span_id = None
+
+    start = time.time()
+    response = await call_next(request)
+    latency_ms = round((time.time() - start) * 1000.0, 2)
+
+    api_logger.info(
+        request=request,
+        response=response,
+        latency_ms=latency_ms,
+    )
+
+    return response
+
+
+
 # Health
-# -----------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 
-@app.get("/ready")
-def ready():
-    return readiness()
 
-
-# -----------------------
-# Prometheus metrics
-# -----------------------
-@app.get("/metrics")
-def metrics():
-    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
-
-
-# -----------------------
-# API logging (only /api)
-# -----------------------
-@app.middleware("http")
-async def api_logging_middleware(request: Request, call_next):
-    # Only log API calls (skip /metrics, /healthz, etc. if you want)
-    if request.url.path.startswith("/api"):
-        start = time.time()
-        request_id = str(uuid4())
-
-        # Attach a state object so handlers can enrich it
-        request.state.request_id = request_id
-
-        response = None
-        try:
-            response = await call_next(request)
-            status_code = getattr(response, "status_code", 500)
-        except Exception as exc:
-            # expose short error for logging; don't leak full trace
-            request.state.error_message = str(exc)
-            status_code = 500
-            raise
-        finally:
-            # Always try to log the request, even if handler raised
-            await log_request(request, status_code, start)
-
-        return response
-
-    # Non-/api paths: just pass through
-    return await call_next(request)
-
-
-# -----------------------
-# Chat endpoint
-# -----------------------
+# Chat endpoint (FULLY TRACED)
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest, request: Request):
-    RAG_CHAT_REQUESTS_TOTAL.inc()
-    RAG_INFLIGHT.inc()
-    try:
-        session_id = req.session_id or str(uuid4())
-        request.state.session_id = session_id
+    start_time = time.time()
 
-        # append user message
-        session_store.append(session_id, "user", req.message)
+    with tracer.start_as_current_span("rag.chat") as root_span:
+        root_span.set_attribute("session.id", req.session_id or "new")
+        root_span.set_attribute("rag.top_k", int(os.getenv("RAG_TOP_K", "4")))
 
-        # load chat history
-        history = session_store.get_history(session_id)
+        
+        # Load session (Redis auto-instrumented)
+        history = sessions.get(req.session_id)
 
-        # retrieve context (optional)
-        retriever = build_retriever_from_env()
-        t0 = time.time()
-        chunks = retriever.retrieve(req.message) if retriever else []
-        retrieval_ms = round((time.time() - t0) * 1000.0, 2)
-        RAG_RETRIEVAL_LATENCY_SECONDS.observe(retrieval_ms / 1000.0)
+        
+        # Retrieval (Qdrant)
+        with tracer.start_as_current_span("retrieval.vector_search") as span:
+            span.set_attribute("vector.db", "qdrant")
+            span.set_attribute(
+                "vector.collection",
+                os.getenv("QDRANT_COLLECTION", "medical_docs"),
+            )
+            span.set_attribute("vector.top_k", int(os.getenv("RAG_TOP_K", "4")))
+
+            t0 = time.time()
+            chunks = retriever.retrieve(req.message) if retriever else []
+            retrieval_ms = round((time.time() - t0) * 1000.0, 2)
+
+            span.set_attribute("retrieval.chunks", len(chunks))
 
         request.state.retrieval_ms = retrieval_ms
         request.state.chunks_returned = len(chunks)
 
-        # estimate context tokens (simple heuristic; consistent with retriever)
-        est_tokens = 0
-        for c in chunks:
-            est_tokens += max(1, len(c.text) // 4)
-        RAG_CONTEXT_TOKENS.observe(est_tokens)
-
-        if not chunks:
-            RAG_EMPTY_CONTEXT_TOTAL.inc()
-
-        # build grounded prompt
-        prompt = build_prompt(
-            req.message,
-            chunks,
-            chat_history=history,
+        
+        # Prompt construction
+        prompt = kserve.build_prompt(
+            question=req.message,
+            context_chunks=chunks,
+            history=history,
         )
 
-        # generate answer
-        kserve = build_kserve_client_from_env()
-        g0 = time.time()
-        if kserve:
-            max_tokens = int(os.getenv("LLM_MAX_TOKENS", "512"))
-            temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
-            answer = kserve.generate(prompt, max_tokens=max_tokens, temperature=temperature)
-        else:
-            # executable fallback without KServe
-            RAG_FALLBACK_TOTAL.inc()
-            if chunks:
-                answer = (
-                    "General information based on available context:\n\n"
-                    + "\n\n".join([f"- {c.text} [source:{c.id}]" for c in chunks[:3]])
-                    + "\n\n(Configure KSERVE_URL for full generation.)"
-                )
-            else:
-                answer = (
-                    "I don't have enough context. "
-                    "Ingest documents into Qdrant first."
-                )
-        llm_ms = round((time.time() - g0) * 1000.0, 2)
-        RAG_GENERATION_LATENCY_SECONDS.observe(llm_ms / 1000.0)
-        request.state.llm_ms = llm_ms
+        
+        # LLM inference
+        
+        with tracer.start_as_current_span("llm.inference") as span:
+            span.set_attribute("llm.provider", "kserve")
+            span.set_attribute(
+                "llm.model",
+                os.getenv("LLM_MODEL_ID", "unknown"),
+            )
+            span.set_attribute(
+                "llm.max_tokens",
+                int(os.getenv("LLM_MAX_TOKENS", "512")),
+            )
+            span.set_attribute(
+                "llm.temperature",
+                float(os.getenv("LLM_TEMPERATURE", "0.2")),
+            )
 
-        # append assistant response
-        session_store.append(session_id, "assistant", answer)
+            answer = kserve.generate(
+                prompt,
+                max_tokens=int(os.getenv("LLM_MAX_TOKENS", "512")),
+                temperature=float(os.getenv("LLM_TEMPERATURE", "0.2")),
+            )
 
-        # reload full history
-        history = session_store.get_history(session_id)
+        
+        # Persist session
+        
+        sessions.append(req.session_id, req.message, answer)
+
+        
+        # Metrics
+        
+        latency_ms = round((time.time() - start_time) * 1000.0, 2)
+        CHAT_REQUEST_COUNT.inc()
+        CHAT_LATENCY.observe(latency_ms)
 
         return ChatResponse(
-            session_id=session_id,
             answer=answer,
-            history=history,
-            context_used=len(chunks),
+            latency_ms=latency_ms,
+            chunks_used=len(chunks),
+            session_id=req.session_id,
         )
-    finally:
-        RAG_INFLIGHT.dec()

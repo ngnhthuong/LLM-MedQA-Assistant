@@ -54,6 +54,9 @@ async def log_request(
         "chunks_returned": _safe_getattr(state, "chunks_returned", None),
         # High-level error info, if any
         "error": _safe_getattr(state, "error_message", None),
+        # Add Add trace_id/span_id in json
+        "trace_id": _safe_getattr(state, "trace_id", None),
+        "span_id": _safe_getattr(state, "span_id", None),
     }
 
     logger.info(json.dumps(payload, ensure_ascii=False))

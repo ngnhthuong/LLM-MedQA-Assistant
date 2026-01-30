@@ -20,15 +20,6 @@ resources:
     cpu: 1
     memory: 1Gi
 
-# # -----------------------------
-# # Horizontal Pod Autoscaler
-# # -----------------------------
-# hpa:
-#   enabled: false
-#   minReplicas: 1
-#   maxReplicas: 3
-#   targetCPUUtilizationPercentage: 80
-
 # -----------------------------
 # Redis (session memory)
 # -----------------------------
