@@ -3,8 +3,6 @@ kind: Service
 metadata:
   name: jaeger
   namespace: {{ .Values.namespace }}
-  labels:
-    app: jaeger
 spec:
   type: {{ .Values.jaeger.service.type }}
   selector:

@@ -89,15 +89,12 @@ def metrics():
 # ---------------------------------------------------------------------
 @app.middleware("http")
 async def api_logging_middleware(request: Request, call_next):
-    # Only log API calls (skip /metrics, /health, etc. if you want)
     if request.url.path.startswith("/api"):
         start = time.time()
         request_id = str(uuid4())
-
-        # Attach a state object so handlers can enrich it
         request.state.request_id = request_id
 
-        # Trace/log correlation
+        # Single call_next, wrapped in the span
         with tracer.start_as_current_span(
             f"http {request.method} {request.url.path}"
         ) as span:
@@ -105,23 +102,20 @@ async def api_logging_middleware(request: Request, call_next):
             request.state.trace_id = format(ctx.trace_id, "032x")
             request.state.span_id = format(ctx.span_id, "016x")
             response = await call_next(request)
-
-        response = None
-        try:
-            response = await call_next(request)
             status_code = getattr(response, "status_code", 500)
+
+        try:
+            # no second call_next here
+            pass
         except Exception as exc:
-            # expose short error for logging; don't leak full trace
             request.state.error_message = str(exc)
             status_code = 500
             raise
         finally:
-            # Always try to log the request, even if handler raised
             await log_request(request, status_code, start)
 
         return response
 
-    # Non-/api paths: just pass through
     return await call_next(request)
 
 
