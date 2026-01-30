@@ -9,7 +9,7 @@ streamlit:
 
   image:
     repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui
-    tag: "0.2.1"
+    tag: "0.2.2"
     pullPolicy: IfNotPresent
 
 
