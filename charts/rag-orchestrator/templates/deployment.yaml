@@ -105,10 +105,8 @@ spec:
             # -----------------------------
             - name: OTEL_SERVICE_NAME
               value: rag-orchestrator
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: http://otel-collector.tracing.svc.cluster.local:4317
-            - name: OTEL_EXCLUDED_URLS
-              value: /metrics|/health|/ready
+            - name: OTEL_EXPORTER_OTLP_HTTP_ENDPOINT
+              value: http://otel-collector.tracing.svc.cluster.local:4318/v1/traces
               
           readinessProbe:
             httpGet:
