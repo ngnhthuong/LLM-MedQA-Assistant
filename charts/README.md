@@ -26,7 +26,7 @@ Handles **external HTTP/HTTPS traffic** and routes it to internal services using
 
 | Pod | Pod Type | What it does | Why this type | Communicates with | How it communicates |
 |----|---------|--------------|--------------|------------------|---------------------|
-| ingress-nginx-controller | Deployment | Acts as Kubernetes Ingress Controller | Stateless controller pattern defined by ingress-nginx Helm chart | Streamlit service (`model-serving`) | HTTP/HTTPS via Ingress rules → ClusterIP Service |
+| ingress-nginx-controller | Deployment | Acts as Kubernetes Ingress Controller | Stateless controller pattern defined by ingress-nginx Helm chart | Streamlit service (`model-serving`) | HTTP/HTTPS via Ingress rules -> ClusterIP Service |
 
 **Why Deployment?**  
 Ingress controllers do not store state and can be horizontally scaled for availability.
@@ -154,3 +154,33 @@ External exposure is handled **only by Ingress**, not by LoadBalancers per servi
 This layout reflects **Kubernetes design** and supports scalability, observability, and maintainability.
 
 ---
+
+# About security design
+Security is the pratice of protecting information and systems from unauthorized access, use, disclosure, disruption, modification,
+or destruction.  
+It is traditionally defined by the three core principles of the CIA Triad:
+- Confidentially: Keep data secret (only authorized people can see it)
+- Integrity: Keep data accurate (prevent unauthorized changes)
+- Availability: Keep the system running (ensuring the service is there when needed)
+---
+## LLMOps Life Cycle – Security Considerations
+
+| Plan / Phase | Security Considerations | Tools to Prevent / Mitigate |
+|-------------|------------------------|-----------------------------|
+| **Phase 1 – Plan / Scope** | - Threat modeling (prompt injection, data leakage)<br>- Data privacy & compliance (PII handling, legal compliance)<br>- Third-party model risk (model safety, provider trustworthiness)<br>- Access & governance (who can query the model, authority levels) | - OWASP Top 10 for LLMs<br>- MITRE ATLAS<br>- Microsoft Presidio<br>- picklescan, ModelScan<br>- SOC2 / ISO 27001 reports (providers)<br>- RBAC (AWS IAM, Azure Active Directory, Kubernetes RBAC) |
+| **Phase 2 – Data Augmentation & Fine-Tuning** | - Adversarial robustness testing<br>- Vulnerability assessment of ML libraries<br>- License compliance scanning<br>- Boundary protection (toxic content, sensitive data leakage)<br>- Data integrity & validation (poisoned datasets, PII prevention)<br>- Pipeline & storage security (ETL and fine-tuning access control) | - ART, NVIDIA Garak<br>- safety, Snyk, pip-audit<br>- FOSSA<br>- NeMo Guardrails, Guardrails AI<br>- Great Expectations, Deequ<br>- DataHub<br>- Apache Airflow with RBAC |
+| **Phase 3 – Application Development** | - Application security testing (code & runtime)<br>- Hardcoded secrets, weak cryptography, unsafe functions<br>- Runtime vulnerability detection<br>- Secure developer access & MFA<br>- Secure LLM–application interaction (API tokens, keys) | - SAST, DAST, IAST<br>- Snyk, SonarQube<br>- GitLab, Auth0, AWS IAM<br>- HashiCorp Vault |
+| **Phase 4 – Release** | - Infrastructure-related security<br>- Service-to-service authentication & least privilege<br>- Network security (private VPC, mTLS)<br>- Trusted execution environments<br>- Infrastructure-as-Code (IaC) scanning<br>- Model & dataset integrity (signing)<br>- CI/CD pipeline hardening | - IAM (Workload Identity, MFA)<br>- VPC, mTLS<br>- Checkov, Terrascan<br>- sigstore<br>- GitLab CI/CD<br>- HashiCorp Vault<br>- Auth0, AWS IAM |
+| **Phase 5 – Operate & Monitoring** | - Real-time guardrails for inputs & outputs<br>- Prompt security (system prompt leakage)<br>- Patch management for dependencies<br>- Real-time privacy protection (PII detection & masking) | - NVIDIA NeMo Guardrails<br>- Guardrails AI<br>- Promptfoo<br>- Dependabot<br>- Microsoft Presidio |
+
+---
+
+## LLMOps Life Cycle – Alignment with LLM-MedQA / RAG Kubernetes Architecture
+
+| Plan / Phase | Security Considerations | Tool Choice | What It Can Prevent (At Least) |
+|-------------|----------------------------------|----------------------------------------|--------------------------------|
+| **Phase 1 – Plan / Scope** | - Prompt injection<br>- Data leakage (PII exposure)<br>- Untrusted third-party models<br>- Over-permissive access to services | **OWASP Top 10 for LLMs (Checklist)** | - Prevents missing obvious LLM threats early<br>- Helps avoid insecure design decisions (e.g. no prompt boundaries, no access rules) |
+| **Phase 2 – Data Augmentation & Fine-Tuning** | - Poisoned datasets<br>- Accidental PII in training data<br>- Corrupted or low-quality data entering Qdrant | **Great Expectations** | - Prevents clearly invalid or malformed data<br>- Detects missing fields, unexpected values, basic data poisoning |
+| **Phase 3 – Application Development** | - Hardcoded secrets<br>- Insecure code patterns<br>- Vulnerable dependencies<br>- Unsafe Python functions | **SonarQube** | - Flags obvious insecure code and dependencies |
+| **Phase 4 – Release** | - Misconfigured cloud resources<br>- Public buckets or open ports<br>- Over-privileged service accounts | **Checkov** | - Prevents common Terraform / IaC misconfigurations<br>- Catches public-exposed resources before deployment |
+| **Phase 5 – Operate & Monitoring** | - Prompt leakage (system prompt exposed)<br>- Toxic or unsafe outputs<br>- Runtime data leakage<br>- Undetected abnormal behavior | **Prometheus + Grafana** | - Prevents silent failures by exposing abnormal traffic, latency, or error rates<br>- Helps detect misuse or attacks indirectly through metrics |

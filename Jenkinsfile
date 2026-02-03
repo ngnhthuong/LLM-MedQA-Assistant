@@ -57,6 +57,36 @@ pipeline {
         }
       }
     }
+    stage('Static Code Analysis - SonarQube') {
+      steps {
+        dir('services/rag-orchestrator') {
+          withSonarQubeEnv('SonarCloud') {
+            sh '''
+              set -e
+              export SONAR_SCANNER_VERSION=8.0.1.6346
+              export SONAR_SCANNER_HOME=$HOME/.sonar/sonar-scanner-$SONAR_SCANNER_VERSION-linux-x64
+
+              curl --create-dirs -sSLo $HOME/.sonar/sonar-scanner.zip https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-$SONAR_SCANNER_VERSION-linux-x64.zip
+
+              unzip -o $HOME/.sonar/sonar-scanner.zip -d $HOME/.sonar/
+              export PATH=$SONAR_SCANNER_HOME/bin:$PATH
+
+              sonar-scanner \
+                -Dsonar.organization=lehuyphuong \
+                -Dsonar.projectKey=lehuyphuong_LLM-MedQA-Assistant
+            '''
+          }
+        }
+      }
+    }
+
+    stage('Quality Gate') {
+      steps {
+        timeout(time: 5, unit: 'MINUTES') {
+          waitForQualityGate abortPipeline: true
+        }
+      }
+    }
 
     // --------------------------------------------------
     stage('Authenticate to GCP & GKE') {
