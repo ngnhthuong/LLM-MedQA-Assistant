@@ -86,7 +86,6 @@ pipeline {
           docker run --rm \
             -v "$PWD:/workspace" \
             bridgecrew/checkov:latest \
-            checkov \
             -d /workspace/charts \
             -d /workspace/terraform \
             --framework helm,terraform \
