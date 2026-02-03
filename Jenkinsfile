@@ -80,6 +80,21 @@ pipeline {
       }
     }
 
+    stage('IaC Security Scan - Checkov') {
+      steps {
+        sh '''
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            bridgecrew/checkov:latest \
+            checkov \
+            -d /workspace/charts \
+            -d /workspace/terraform \
+            --framework helm,terraform \
+            --quiet
+        '''
+      }
+    }
+
     stage('Quality Gate') {
       steps {
         timeout(time: 5, unit: 'MINUTES') {
