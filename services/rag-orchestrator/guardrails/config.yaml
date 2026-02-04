@@ -2,6 +2,7 @@ colang_version: "2.x"
 
 models:
   - name: medqa-vllm
+    type: main
     engine: openai
     model: mistralai/Mistral-7B-Instruct-v0.2
     base_url: ${KSERVE_BASE_URL}
