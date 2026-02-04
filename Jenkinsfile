@@ -48,16 +48,21 @@ pipeline {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            python:3.11-slim -m venv .venv
-            . .venv/bin/activate
-            python --version
-            pip install --upgrade pip
-            pip install -r requirements.txt
-            pytest --cov=app --cov-report=term --cov-fail-under=80
+            docker run --rm \
+              -v "$PWD:/work" -w /work \
+              python:3.11-slim \
+              bash -lc '
+                apt-get update && apt-get install -y --no-install-recommends build-essential g++ python3-dev && rm -rf /var/lib/apt/lists/*;
+                python --version;
+                python -m pip install --upgrade pip setuptools wheel;
+                python -m pip install --no-cache-dir -r requirements.txt;
+                python -m pytest --cov=app --cov-report=term --cov-fail-under=80
+              '
           '''
         }
       }
     }
+
     stage('Static Code Analysis - SonarQube') {
       steps {
         dir('services/rag-orchestrator') {
