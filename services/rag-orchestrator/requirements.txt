@@ -18,3 +18,4 @@ opentelemetry-instrumentation-redis
 opentelemetry-instrumentation-httpx
 opentelemetry-exporter-otlp
 nemoguardrails
+langchain-openai
