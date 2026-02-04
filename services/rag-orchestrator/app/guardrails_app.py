@@ -6,49 +6,56 @@ from nemoguardrails import RailsConfig, LLMRails
 from nemoguardrails.llm.providers import register_llm_provider
 
 
-def external_inference_llm(prompt: str | None = None, messages: list | None = None, **kwargs) -> str:
+class ExternalInferenceLLM:
     """
-    NeMo Guardrails 0.20.0-compatible custom LLM provider
-    backed by the existing external inference service (KServe).
+    NeMo Guardrails 0.20.0-compatible custom LLM provider.
+    Must implement `_acall`.
     """
-    from .llm_client import build_kserve_client_from_env
 
-    client = build_kserve_client_from_env()
-    if not client:
-        raise RuntimeError("External inference client not configured")
+    async def _acall(
+        self,
+        prompt: str | None = None,
+        messages: list | None = None,
+        **kwargs,
+    ) -> str:
+        from .llm_client import build_kserve_client_from_env
 
-    # Guardrails may pass messages OR prompt
-    if prompt is None and messages is not None:
-        prompt = _messages_to_prompt(messages)
+        client = build_kserve_client_from_env()
+        if not client:
+            raise RuntimeError("External inference client not configured")
 
-    if not prompt:
-        raise ValueError("No prompt provided to external_inference_llm")
+        # Guardrails may pass messages OR prompt
+        if prompt is None and messages is not None:
+            prompt = self._messages_to_prompt(messages)
 
-    max_tokens = kwargs.get("max_tokens", 512)
-    temperature = kwargs.get("temperature", 0.2)
+        if not prompt:
+            raise ValueError("No prompt provided to ExternalInferenceLLM")
 
-    return client.generate(
-        prompt,
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
+        max_tokens = kwargs.get("max_tokens", 512)
+        temperature = kwargs.get("temperature", 0.2)
+
+        # Your client is sync → call it directly
+        return client.generate(
+            prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+        )
+
+    @staticmethod
+    def _messages_to_prompt(messages: list[dict]) -> str:
+        """
+        Convert OpenAI-style messages into a single prompt
+        suitable for instruction-tuned models like Mistral.
+        """
+        parts = []
+        for m in messages:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            parts.append(f"[{role.upper()}]\n{content}")
+        return "\n\n".join(parts)
 
 
-def _messages_to_prompt(messages: list[dict]) -> str:
-    """
-    Convert OpenAI-style messages into a single prompt
-    suitable for instruction-tuned models like Mistral.
-    """
-    parts = []
-    for m in messages:
-        role = m.get("role", "user")
-        content = m.get("content", "")
-        parts.append(f"[{role.upper()}]\n{content}")
-    return "\n\n".join(parts)
-
-
-# Correct registration for 0.20.0
-register_llm_provider("external", external_inference_llm)
+register_llm_provider("external", ExternalInferenceLLM)
 
 
 GUARDRAILS_ENABLED = os.getenv("GUARDRAILS_ENABLED", "false").lower() == "true"
@@ -70,7 +77,7 @@ def generate_with_guardrails(user_message: str, grounded_prompt: str) -> str:
 
     response: Any = rails.generate(messages=messages)
 
-    # Normalize output (0.20.0-safe)
+    # Normalize output safely
     if isinstance(response, str):
         return response
     if isinstance(response, dict):
