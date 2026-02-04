@@ -30,7 +30,7 @@ from .metrics import (
 
 from .tracing import setup_tracing
 
-from ..guardrails_app import (
+from .guardrails_app import (
     GUARDRAILS_ENABLED,
     generate_with_guardrails,
 )
