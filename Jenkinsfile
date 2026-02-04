@@ -18,7 +18,7 @@ pipeline {
 
     // ---------------- Image versions (SOURCE OF TRUTH) ----------------
     // Bump these intentionally when you want new releases
-    RAG_VERSION   = '0.2.5'
+    RAG_VERSION   = '0.2.6'
     UI_VERSION    = '0.2.2'
     INGEST_VERSION= '0.1.2'
 
