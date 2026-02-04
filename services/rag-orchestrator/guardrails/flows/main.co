@@ -8,7 +8,7 @@ flow medical_chat
 flow medical_policy_check
     when user asks for diagnosis or treatment
         assistant respond "I'm not a doctor, but I can provide general medical information. Please consult a qualified healthcare professional."
-        stop
+        stop execution
 
 flow generate_medical_answer
     assistant call llm
