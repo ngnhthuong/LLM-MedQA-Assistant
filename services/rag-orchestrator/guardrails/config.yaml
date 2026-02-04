@@ -3,7 +3,6 @@ models:
     name: medqa-llm
     model: medqa-vllm
     api_key: dummy
-    engine: ${LLM_MODEL_ID}   # reuse your env var
     params:
       temperature: 0.2
     # base_url: points to your external vLLM / KServe gateway
