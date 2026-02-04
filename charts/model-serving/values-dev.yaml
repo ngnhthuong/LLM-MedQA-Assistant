@@ -39,11 +39,11 @@ rag-orchestrator:
     QDRANT_COLLECTION: medical_docs
   resources:
     requests:
-      cpu: 100m
-      memory: 256Mi
-    limits:
-      cpu: 200m
+      cpu: 400m
       memory: 512Mi
+    limits:
+      cpu: 600m
+      memory: 1Gi
   llm:
     enabled: true
     baseUrl: "http://220.130.209.122:41422"
