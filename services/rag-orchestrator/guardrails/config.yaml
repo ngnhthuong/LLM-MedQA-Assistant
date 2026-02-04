@@ -1,11 +1,13 @@
 models:
   - type: openai-chat         # NeMo treats your vLLM endpoint as OpenAI-chat compatible
     name: medqa-llm
+    model: medqa-vllm
+    api_key: dummy
     engine: ${LLM_MODEL_ID}   # reuse your env var
     params:
       temperature: 0.2
     # base_url: points to your external vLLM / KServe gateway
-    # If your vLLM exposes /v1/chat/completions:
+    # If your vLLM exposes /v1/completions:
     api_base: ${KSERVE_BASE_URL}
 
 # Which flows to run by default
