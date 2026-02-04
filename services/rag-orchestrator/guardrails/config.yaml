@@ -1,26 +1,16 @@
-models:
-  - type: openai-chat         # NeMo treats your vLLM endpoint as OpenAI-chat compatible
-    engine: openai
-    name: medqa-llm
-    model: medqa-vllm
-    api_key: dummy
-    params:
-      temperature: 0.2
-    # base_url: points to your external vLLM / KServe gateway
-    # If your vLLM exposes /v1/completions:
-    api_base: ${KSERVE_BASE_URL}
-
-# Which flows to run by default
-rails:
-  input:
-    flows:
-      - medical_chat
-  output:
-    flows:
-      - medical_chat
-
-# Optional: tell NeMo where the CoLang flows live
-colang_paths:
-  - flows
-
 colang_version: "2.x"
+
+models:
+  - name: medqa-vllm
+    type: openai-chat
+    engine: openai
+    parameters:
+      model: mistralai/Mistral-7B-Instruct-v0.2
+      openai_api_base: ${KSERVE_BASE_URL}
+      openai_api_key: "EMPTY"
+      temperature: 0.2
+
+rails:
+  dialog:
+    flows:
+      - main
