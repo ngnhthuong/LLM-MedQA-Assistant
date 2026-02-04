@@ -15,7 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # ---- copy app code ----
 COPY app ./app
-COPY guardrails_app.py ./guardrails_app.py
 COPY guardrails ./guardrails
 
 # ---- drop privileges ----
