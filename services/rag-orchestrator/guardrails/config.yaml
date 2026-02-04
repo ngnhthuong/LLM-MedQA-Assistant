@@ -25,9 +25,7 @@ rails:
   # These names follow the NeMo Guardrails library conventions.
   # (See "Guardrails Library" + example config.yml in README.) :contentReference[oaicite:6]{index=6}
   output:
-    flows:
-      - self check facts
-      - self check hallucination
+    flows: []
 
   # Optional extra configuration for built-in rails can go here later,
   # e.g. sensitive_data_detection, self_check thresholds, etc.
