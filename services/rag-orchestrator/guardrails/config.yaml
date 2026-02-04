@@ -2,13 +2,11 @@ colang_version: "2.x"
 
 models:
   - name: medqa-vllm
-    type: openai-chat
     engine: openai
-    parameters:
-      model: mistralai/Mistral-7B-Instruct-v0.2
-      openai_api_base: ${KSERVE_BASE_URL}
-      openai_api_key: "EMPTY"
-      temperature: 0.2
+    model: mistralai/Mistral-7B-Instruct-v0.2
+    base_url: ${KSERVE_BASE_URL}
+    api_key: dummy
+    temperature: 0.2
 
 rails:
   dialog:

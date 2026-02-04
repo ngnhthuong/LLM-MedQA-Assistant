@@ -2,14 +2,9 @@ import core
 import llm
 
 flow main
-    await medical_chat
+    activate medical_chat
 
 flow medical_chat
     when user says $query
-        $answer = await llm.chat(
-            messages=[
-                {"role": "system", "content": "You are a medical QA assistant."},
-                {"role": "user", "content": $query}
-            ]
-        )
-        send assistant $answer
+        send assistant
+            $query
