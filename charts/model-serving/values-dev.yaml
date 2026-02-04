@@ -31,7 +31,7 @@ rag-orchestrator:
   enabled: true
   image:
     repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
-    tag: "0.4.9"
+    tag: "0.5.0"
   env:
     REDIS_HOST: redis
     REDIS_PORT: "6379"

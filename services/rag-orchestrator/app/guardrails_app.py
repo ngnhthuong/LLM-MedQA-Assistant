@@ -13,7 +13,7 @@ from langchain_core.runnables import RunnableConfig
 
 class ExternalInferenceLLM(BaseLanguageModel):
     """
-    LangChain-compatible LLM wrapper for NeMo Guardrails 0.20.0
+    LangChain 0.2.x compatible LLM for NeMo Guardrails 0.20.0
     backed by external inference (KServe).
     """
 
@@ -23,6 +23,8 @@ class ExternalInferenceLLM(BaseLanguageModel):
     @property
     def _llm_type(self) -> str:
         return "external-kserve"
+
+    # ---- Core implementation ----
 
     def _call(
         self,
@@ -48,8 +50,23 @@ class ExternalInferenceLLM(BaseLanguageModel):
         stop: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> str:
-        # Guardrails prefers async, but your backend is sync
         return self._call(prompt, stop=stop, **kwargs)
+
+    # ---- Required abstract methods (LangChain 0.2.x) ----
+
+    def predict(self, text: str, **kwargs: Any) -> str:
+        return self._call(text, **kwargs)
+
+    async def apredict(self, text: str, **kwargs: Any) -> str:
+        return await self._acall(text, **kwargs)
+
+    def predict_messages(self, messages: List[Any], **kwargs: Any) -> str:
+        prompt = self._messages_to_prompt(messages)
+        return self._call(prompt, **kwargs)
+
+    async def apredict_messages(self, messages: List[Any], **kwargs: Any) -> str:
+        prompt = self._messages_to_prompt(messages)
+        return await self._acall(prompt, **kwargs)
 
     def generate_prompt(
         self,
@@ -62,6 +79,30 @@ class ExternalInferenceLLM(BaseLanguageModel):
             for p in prompts
         ]
         return LLMResult(generations=generations)
+
+    async def agenerate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> LLMResult:
+        generations = [
+            [Generation(text=await self._acall(p, stop=stop, **kwargs))]
+            for p in prompts
+        ]
+        return LLMResult(generations=generations)
+
+    def invoke(self, input: str, **kwargs: Any) -> str:
+        return self._call(input, **kwargs)
+
+    @staticmethod
+    def _messages_to_prompt(messages: List[Any]) -> str:
+        parts = []
+        for m in messages:
+            role = getattr(m, "role", None) or m.get("role", "user")
+            content = getattr(m, "content", None) or m.get("content", "")
+            parts.append(f"[{role.upper()}]\n{content}")
+        return "\n\n".join(parts)
 
 
 register_llm_provider("external", ExternalInferenceLLM)
