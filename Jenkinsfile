@@ -48,10 +48,10 @@ pipeline {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            python3.11.14 -m venv .venv
+            python3.11 -m venv .venv
             . .venv/bin/activate
-            python -m pip install --upgrade pip
-            python -m pip install -r requirements.txt
+            pip install --upgrade pip
+            pip install -r requirements.txt
             pytest --cov=app --cov-report=term --cov-fail-under=80
           '''
         }
