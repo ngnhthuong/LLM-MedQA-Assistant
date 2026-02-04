@@ -1,32 +1,16 @@
 colang_version: "1.0"
 
-# ---------------------------------------------------------
-# LLM configuration
-# ---------------------------------------------------------
 models:
   - type: main
-    engine: openai
-    # Change this to match your OpenAI model / provider
-    model: gpt-4o-mini
+    engine: external
+    model: mistralai/Mistral-7B-Instruct-v0.2
     parameters:
       temperature: 0.2
       max_tokens: 512
 
-# ---------------------------------------------------------
-# Rails configuration
-# ---------------------------------------------------------
 rails:
-  # For now we keep input rails empty; you can add
-  # jailbreak or PII-masking flows later if you like.
   input:
     flows: []
 
-  # Output rails: use built-in self-check rails to reduce hallucinations.
-  # These names follow the NeMo Guardrails library conventions.
-  # (See "Guardrails Library" + example config.yml in README.) :contentReference[oaicite:6]{index=6}
   output:
     flows: []
-
-  # Optional extra configuration for built-in rails can go here later,
-  # e.g. sensitive_data_detection, self_check thresholds, etc.
-  config: {}
