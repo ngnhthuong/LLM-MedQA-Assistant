@@ -47,7 +47,7 @@ rag-orchestrator:
   llm:
     enabled: true
     baseUrl: "http://220.130.209.122:41422"
-    completionsPath: "/v1/chat/completions"
+    completionsPath: "/v1/completions"
     modelId: "mistralai/Mistral-7B-Instruct-v0.2"
 
   hpa:
