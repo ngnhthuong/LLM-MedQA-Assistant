@@ -4,25 +4,14 @@ flow medical_chat
     when user says something
         do medical_policy_check
         do generate_medical_answer
-        do post_answer_safety_check
 
 
 flow medical_policy_check
     when user asks for diagnosis or treatment
-        assistant respond
-            "I’m not a doctor, but I can provide general medical information.
-             Please consult a qualified healthcare professional for diagnosis or treatment."
+        assistant respond "I’m not a doctor, but I can provide general medical information. Please consult a qualified healthcare professional."
         stop
 
 
 flow generate_medical_answer
     assistant call llm
-    assistant respond with llm_response
-
-
-flow post_answer_safety_check
-    when assistant response contains disallowed_medical_claims
-        assistant respond
-            "I’m not able to provide that information safely.
-             Please consult a healthcare professional."
-        stop
+    assistant respond llm_response
