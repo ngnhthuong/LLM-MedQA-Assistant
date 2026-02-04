@@ -30,6 +30,11 @@ spec:
 
           env:
             # -----------------------------
+            # Enable guardrails
+            - name: GUARDRAILS_ENABLED
+              value: "true"
+            # -----------------------------
+            # -----------------------------
             # External LLM (Vast.ai / vLLM)
             # -----------------------------
             - name: KSERVE_ENABLED

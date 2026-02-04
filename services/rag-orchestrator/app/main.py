@@ -30,6 +30,11 @@ from .metrics import (
 
 from .tracing import setup_tracing
 
+from ..guardrails_app import (
+    GUARDRAILS_ENABLED,
+    generate_with_guardrails,
+)
+
 # ---------------------------------------------------------------------
 # App bootstrap and tracing
 # ---------------------------------------------------------------------
@@ -176,44 +181,54 @@ def chat(req: ChatRequest, request: Request):
                 chunks,
                 chat_history=history,
             )
-
-            # generate answer
-            kserve = build_kserve_client_from_env()
-
             with tracer.start_as_current_span("llm.inference") as span:
-                span.set_attribute("llm.provider", "kserve")
                 span.set_attribute(
                     "llm.model",
                     os.getenv("LLM_MODEL_ID", "unknown"),
                 )
                 g0 = time.time()
-                if kserve:
-                    max_tokens = int(os.getenv("LLM_MAX_TOKENS", "512"))
-                    temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
-                    answer = kserve.generate(
-                        prompt,
-                        max_tokens=max_tokens,
-                        temperature=temperature,
+
+                # Check prompt before send
+                if GUARDRAILS_ENABLED:
+                    span.set_attribute("llm.provider", "nemo_guardrails")
+                    # Let NeMo Guardrails control the LLM call & safety
+                    answer = generate_with_guardrails(
+                        user_message=req.message,
+                        grounded_prompt=prompt,
                     )
                 else:
-                    # executable fallback without KServe
-                    RAG_FALLBACK_TOTAL.inc()
-                    if chunks:
-                        answer = (
-                            "General information based on available context:\n\n"
-                            + "\n\n".join(
-                                f"- {c.text} [source:{c.id}]"
-                                for c in chunks[:3]
-                            )
-                            + "\n\n(Configure KSERVE_URL for full generation.)"
+                    span.set_attribute("llm.provider", "kserve")
+                    kserve = build_kserve_client_from_env()
+
+                    if kserve:
+                        max_tokens = int(os.getenv("LLM_MAX_TOKENS", "512"))
+                        temperature = float(os.getenv("LLM_TEMPERATURE", "0.2"))
+                        answer = kserve.generate(
+                            prompt,
+                            max_tokens=max_tokens,
+                            temperature=temperature,
                         )
                     else:
-                        answer = (
-                            "I don't have enough context. "
-                            "Ingest documents into Qdrant first."
-                        )
-
+                        # existing fallback path
+                        RAG_FALLBACK_TOTAL.inc()
+                        if chunks:
+                            answer = (
+                                "General information based on available context:\n\n"
+                                + "\n\n".join(
+                                    f"- {c.text} [source:{c.id}]"
+                                    for c in chunks[:3]
+                                )
+                                + "\n\n(Configure KSERVE_URL for full generation.)"
+                            )
+                        else:
+                            answer = (
+                                "I don't have enough context. "
+                                "Ingest documents into Qdrant first."
+                            )
                 llm_ms = round((time.time() - g0) * 1000.0, 2)
+
+            # generate answer
+            kserve = build_kserve_client_from_env()
 
             RAG_GENERATION_LATENCY_SECONDS.observe(llm_ms / 1000.0)
             request.state.llm_ms = llm_ms

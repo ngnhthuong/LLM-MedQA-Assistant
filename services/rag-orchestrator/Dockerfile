@@ -5,6 +5,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY guardrails_app.py ./guardrails_app.py
+COPY guardrails ./guardrails
 
 # run non-root containers.
 RUN useradd --create-home --uid 10001 appuser \
