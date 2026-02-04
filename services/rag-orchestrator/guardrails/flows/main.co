@@ -1,18 +1,14 @@
 import core
 import llm
-import guardrails
-import nemoguardrails.library
 
-# Entry point (REQUIRED)
 flow main
     await medical_chat
 
-# Main medical chat flow
 flow medical_chat
     when user says $query
         $answer = await llm.chat(
             messages=[
-                {"role": "system", "content": "You are a helpful medical QA assistant."},
+                {"role": "system", "content": "You are a medical QA assistant."},
                 {"role": "user", "content": $query}
             ]
         )
