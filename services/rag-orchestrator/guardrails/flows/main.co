@@ -3,37 +3,17 @@ import llm
 import guardrails
 import nemoguardrails.library
 
-# Flow-based dialog rails (Colang 2.x).
-# After adding this, remove the deprecated input/output rails from config.yml.
-flow input rails $input_text
-  medical_chat
-
-flow output rails $output_text
-  medical_chat
-
-# REQUIRED entry point. Without this you get: "No main flow found!"
+# Entry point (REQUIRED)
 flow main
-  activate medical_chat
+    await medical_chat
 
+# Main medical chat flow
 flow medical_chat
-  """
-  You are a medical Q&A assistant.
-
-  Safety rules:
-  - Provide general medical information only; do not diagnose.
-  - If the user describes severe symptoms or emergencies, tell them to seek urgent in-person help.
-  - If the question is unclear, ask 1-2 clarifying questions.
-
-  Style:
-  - Be concise and structured.
-  - Use simple language.
-  - If giving suggestions, present as "possible options" and include a short safety note.
-
-  The user question is:
-  {{ question }}
-
-  Produce the answer as a bot message:
-  bot say "<answer>"
-  """
-  $question = await user said something
-  ...
+    when user says $query
+        $answer = await llm.chat(
+            messages=[
+                {"role": "system", "content": "You are a helpful medical QA assistant."},
+                {"role": "user", "content": $query}
+            ]
+        )
+        send assistant $answer
