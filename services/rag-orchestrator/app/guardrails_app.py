@@ -9,8 +9,14 @@ from nemoguardrails.llm.providers import register_llm_provider
 class ExternalInferenceLLM:
     """
     NeMo Guardrails 0.20.0-compatible custom LLM provider.
-    Must implement `_acall`.
+    Must implement `_acall` and accept constructor kwargs.
     """
+
+    def __init__(self, *args, **kwargs) -> None:
+        # Guardrails passes things like model_name, provider_name, mode, etc.
+        # We don't need them here, because we read everything from env
+        # inside build_kserve_client_from_env().
+        pass
 
     async def _acall(
         self,
@@ -34,7 +40,6 @@ class ExternalInferenceLLM:
         max_tokens = kwargs.get("max_tokens", 512)
         temperature = kwargs.get("temperature", 0.2)
 
-        # Your client is sync → call it directly
         return client.generate(
             prompt,
             max_tokens=max_tokens,
@@ -43,10 +48,6 @@ class ExternalInferenceLLM:
 
     @staticmethod
     def _messages_to_prompt(messages: list[dict]) -> str:
-        """
-        Convert OpenAI-style messages into a single prompt
-        suitable for instruction-tuned models like Mistral.
-        """
         parts = []
         for m in messages:
             role = m.get("role", "user")

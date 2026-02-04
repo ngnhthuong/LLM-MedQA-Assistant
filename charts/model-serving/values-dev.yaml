@@ -31,7 +31,7 @@ rag-orchestrator:
   enabled: true
   image:
     repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
-    tag: "0.4.6"
+    tag: "0.4.7"
   env:
     REDIS_HOST: redis
     REDIS_PORT: "6379"
@@ -46,7 +46,7 @@ rag-orchestrator:
       memory: 1Gi
   llm:
     enabled: true
-    baseUrl: "http://220.130.209.122:41422"
+    baseUrl: "http://220.130.209.122:41182"
     completionsPath: "/v1/completions"
     modelId: "mistralai/Mistral-7B-Instruct-v0.2"
 
