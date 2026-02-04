@@ -1,15 +1,34 @@
-colang_version: "2.x"
+colang_version: "1.0"
 
+# ---------------------------------------------------------
+# LLM configuration
+# ---------------------------------------------------------
 models:
-  - name: medqa-vllm
-    type: main
+  - type: main
     engine: openai
-    model: mistralai/Mistral-7B-Instruct-v0.2
-    base_url: ${KSERVE_BASE_URL}
-    api_key: dummy
-    temperature: 0.2
+    # Change this to match your OpenAI model / provider
+    model: gpt-4o-mini
+    parameters:
+      temperature: 0.2
+      max_tokens: 512
 
+# ---------------------------------------------------------
+# Rails configuration
+# ---------------------------------------------------------
 rails:
-  dialog:
+  # For now we keep input rails empty; you can add
+  # jailbreak or PII-masking flows later if you like.
+  input:
+    flows: []
+
+  # Output rails: use built-in self-check rails to reduce hallucinations.
+  # These names follow the NeMo Guardrails library conventions.
+  # (See "Guardrails Library" + example config.yml in README.) :contentReference[oaicite:6]{index=6}
+  output:
     flows:
-      - main
+      - self check facts
+      - self check hallucination
+
+  # Optional extra configuration for built-in rails can go here later,
+  # e.g. sensitive_data_detection, self_check thresholds, etc.
+  config: {}

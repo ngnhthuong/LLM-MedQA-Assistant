@@ -17,5 +17,5 @@ opentelemetry-instrumentation-requests
 opentelemetry-instrumentation-redis
 opentelemetry-instrumentation-httpx
 opentelemetry-exporter-otlp
-nemoguardrails
+nemoguardrails==0.20.0
 langchain-openai
