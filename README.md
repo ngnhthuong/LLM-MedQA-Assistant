@@ -671,7 +671,7 @@ kubectl get svc -n ingress-nginx
 ```
 ![](assets/imgs/Open_Streamlit.png)
 ---
-## Conclusion
+## Conclusion  
 This repository demonstrates an end-to-end, production-grade LLM-powered Medical Question Answering platform, designed with real-world constraints, scalability, and operational reliability in mind. Rather than focusing solely on model inference, the system emphasizes full lifecycle engineering—from infrastructure provisioning and CI/CD automation to observability, controlled data ingestion, and modular deployment.
 ---
 ## Reference
