@@ -5,12 +5,10 @@ flow medical_chat
         do medical_policy_check
         do generate_medical_answer
 
-
 flow medical_policy_check
     when user asks for diagnosis or treatment
-        assistant respond "I’m not a doctor, but I can provide general medical information. Please consult a qualified healthcare professional."
+        assistant respond "I'm not a doctor, but I can provide general medical information. Please consult a qualified healthcare professional."
         stop
-
 
 flow generate_medical_answer
     assistant call llm
