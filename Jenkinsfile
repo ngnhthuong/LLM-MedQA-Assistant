@@ -48,16 +48,10 @@ pipeline {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            docker run --rm \
-              -v "$PWD:/work" -w /work \
-              python:3.11-slim \
-              bash -lc '
-                apt-get update && apt-get install -y --no-install-recommends build-essential g++ python3-dev && rm -rf /var/lib/apt/lists/*;
-                python --version;
-                python -m pip install --upgrade pip setuptools wheel;
-                python -m pip install --no-cache-dir -r requirements.txt;
-                python -m pytest --cov=app --cov-report=term --cov-fail-under=80
-              '
+            conda activate rag311
+            python -m pip install --upgrade pip
+            python -m pip install -r requirements.txt
+            pytest --cov=app --cov-report=term --cov-fail-under=80
           '''
         }
       }
