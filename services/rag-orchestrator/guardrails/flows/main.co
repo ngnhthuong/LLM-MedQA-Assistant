@@ -1,16 +1,9 @@
-define flow medical_chat
-  user says something
-  assistant follows medical_qa_policy
+define user ask medical_question
+    user said something
 
-define guardrail medical_qa_policy
-  # Only answer medical / health-related questions
-  if user message is clearly not about health or medicine
-    assistant says "I'm a medical assistant and can only help with health-related questions."
+define assistant answer medical_question
+    assistant says something
 
-  # Always encourage consulting a clinician
-  assistant ensures response includes a reminder
-    "This is general information and not a diagnosis. Always consult a healthcare professional."
-
-  # No explicit prescribing / diagnosis
-  assistant must avoid giving a definitive diagnosis or prescribing specific medication.
-end
+flow medical_qa
+    user ask medical_question
+    assistant answer medical_question
