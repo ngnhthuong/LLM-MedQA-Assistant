@@ -1,5 +1,6 @@
 models:
   - type: openai-chat         # NeMo treats your vLLM endpoint as OpenAI-chat compatible
+    engine: openai
     name: medqa-llm
     model: medqa-vllm
     api_key: dummy
