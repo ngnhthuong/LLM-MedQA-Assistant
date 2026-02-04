@@ -1,9 +1,40 @@
-define user ask medical_question
-    user said something
+import core
 
-define assistant answer medical_question
-    assistant says something
+# --------------------------------------------------
+# Entry flow for all medical chat requests
+# --------------------------------------------------
+flow medical_chat:
+    when user says something:
+        do medical_policy_check
+        do generate_medical_answer
+        do post_answer_safety_check
 
-flow medical_qa
-    user ask medical_question
-    assistant answer medical_question
+
+# --------------------------------------------------
+# Policy: detect unsafe medical intent
+# --------------------------------------------------
+flow medical_policy_check:
+    when user asks for diagnosis or treatment:
+        assistant respond:
+            "I’m not a doctor, but I can provide general medical information. 
+             Please consult a qualified healthcare professional for diagnosis or treatment."
+        stop
+
+
+# --------------------------------------------------
+# Main generation flow (RAG + LLM)
+# --------------------------------------------------
+flow generate_medical_answer:
+    assistant call llm
+    assistant respond with llm_response
+
+
+# --------------------------------------------------
+# Post-generation safety layer
+# --------------------------------------------------
+flow post_answer_safety_check:
+    when assistant response contains disallowed_medical_claims:
+        assistant respond:
+            "I’m not able to provide that information safely. 
+             Please consult a healthcare professional."
+        stop

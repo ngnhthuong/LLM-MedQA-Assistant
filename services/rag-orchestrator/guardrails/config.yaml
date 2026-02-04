@@ -20,3 +20,5 @@ rails:
 # Optional: tell NeMo where the CoLang flows live
 colang_paths:
   - flows
+
+colang_version: "2.x"
