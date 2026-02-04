@@ -34,6 +34,8 @@ spec:
             # -----------------------------
             - name: GUARDRAILS_ENABLED
               value: "true"
+            - name: OPENAI_API_KEY
+              value: dummy # openAPI key here is to passby authorization, we infact don't need the actual api key.
             # -----------------------------
             # External LLM (Vast.ai / vLLM)
             # -----------------------------
