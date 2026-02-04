@@ -5,24 +5,30 @@ from typing import Any
 from nemoguardrails import RailsConfig, LLMRails
 from nemoguardrails.llm.providers import register_llm_provider
 
+from typing import Any, List, Optional
+from langchain_core.language_models import BaseLanguageModel
+from langchain_core.outputs import Generation, LLMResult
+from langchain_core.runnables import RunnableConfig
 
-class ExternalInferenceLLM:
+
+class ExternalInferenceLLM(BaseLanguageModel):
     """
-    NeMo Guardrails 0.20.0-compatible custom LLM provider.
-    Must implement `_acall` and accept constructor kwargs.
+    LangChain-compatible LLM wrapper for NeMo Guardrails 0.20.0
+    backed by external inference (KServe).
     """
 
-    def __init__(self, *args, **kwargs) -> None:
-        # Guardrails passes things like model_name, provider_name, mode, etc.
-        # We don't need them here, because we read everything from env
-        # inside build_kserve_client_from_env().
-        pass
+    def __init__(self, *args, **kwargs):
+        super().__init__()
 
-    async def _acall(
+    @property
+    def _llm_type(self) -> str:
+        return "external-kserve"
+
+    def _call(
         self,
-        prompt: str | None = None,
-        messages: list | None = None,
-        **kwargs,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
     ) -> str:
         from .llm_client import build_kserve_client_from_env
 
@@ -30,30 +36,32 @@ class ExternalInferenceLLM:
         if not client:
             raise RuntimeError("External inference client not configured")
 
-        # Guardrails may pass messages OR prompt
-        if prompt is None and messages is not None:
-            prompt = self._messages_to_prompt(messages)
-
-        if not prompt:
-            raise ValueError("No prompt provided to ExternalInferenceLLM")
-
-        max_tokens = kwargs.get("max_tokens", 512)
-        temperature = kwargs.get("temperature", 0.2)
-
         return client.generate(
             prompt,
-            max_tokens=max_tokens,
-            temperature=temperature,
+            max_tokens=kwargs.get("max_tokens", 512),
+            temperature=kwargs.get("temperature", 0.2),
         )
 
-    @staticmethod
-    def _messages_to_prompt(messages: list[dict]) -> str:
-        parts = []
-        for m in messages:
-            role = m.get("role", "user")
-            content = m.get("content", "")
-            parts.append(f"[{role.upper()}]\n{content}")
-        return "\n\n".join(parts)
+    async def _acall(
+        self,
+        prompt: str,
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> str:
+        # Guardrails prefers async, but your backend is sync
+        return self._call(prompt, stop=stop, **kwargs)
+
+    def generate_prompt(
+        self,
+        prompts: List[str],
+        stop: Optional[List[str]] = None,
+        **kwargs: Any,
+    ) -> LLMResult:
+        generations = [
+            [Generation(text=self._call(p, stop=stop, **kwargs))]
+            for p in prompts
+        ]
+        return LLMResult(generations=generations)
 
 
 register_llm_provider("external", ExternalInferenceLLM)
