@@ -10,6 +10,7 @@ omit =
     app/metrics.py
     app/metrics_llm.py
     app/tracing.py
+    app/guardrails_app.py
 
 [report]
 exclude_lines =
