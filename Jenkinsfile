@@ -48,26 +48,21 @@ pipeline {
       steps {
         dir('services/rag-orchestrator') {
           sh '''
-            docker run --rm \
-              -v "$PWD:/work" \
-              -w /work \
-              python:3.11-slim \
-              bash -lc '
-                set -e
+            set -e
 
-                python --version
+            if [ ! -d "$WORKSPACE/miniconda" ]; then
+              curl -fsSL https://repo.anaconda.com/miniconda/Miniconda3-py311_24.3.0-0-Linux-x86_64.sh -o miniconda.sh
+              bash miniconda.sh -b -p "$WORKSPACE/miniconda"
+            fi
 
-                apt-get update && apt-get install -y --no-install-recommends \
-                  build-essential g++ python3-dev \
-                  && rm -rf /var/lib/apt/lists/*
+            export PATH="$WORKSPACE/miniconda/bin:$PATH"
 
-                python -m pip install --upgrade pip setuptools wheel
+            conda create -y -n rag311 python=3.11 || true
 
-                # IMPORTANT: requirements.txt is NOW in /work
-                python -m pip install --no-cache-dir -r requirements.txt
-
-                python -m pytest --cov=app --cov-report=term --cov-fail-under=80
-              '
+            conda run -n rag311 python --version
+            conda run -n rag311 python -m pip install --upgrade pip setuptools wheel
+            conda run -n rag311 python -m pip install -r requirements.txt
+            conda run -n rag311 python -m pytest --cov=app --cov-report=term --cov-fail-under=80
           '''
         }
       }
