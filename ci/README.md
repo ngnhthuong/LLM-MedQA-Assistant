@@ -38,10 +38,9 @@ High-level stages:
 2. Unit tests (FastAPI)
 3. Coverage quality gate (>= 80%)
 4. Static gate (SonarQube and CheckOV)
-5. Data quality gate (Great expectations)
-6. Docker image build
-7. Image push to Artifact Registry
-8. Helm upgrade to `model-serving` namespace
+5. Docker image build
+6. Image push to Artifact Registry
+7. Helm upgrade to `model-serving` namespace
 
 ## Guide to setup Jenskin
 This step sets up a **self-hosted Jenkins** server with Docker support to automate image builds, pushes to Artifact Registry, and Kubernetes deployments. Jenkins runs as a Docker container with access to the host Docker daemon, enabling fully containerized CI/CD workflows.  
@@ -94,7 +93,7 @@ AND CTRL + D TO EXIT CONTAINER
 ```
 From here, open link localhost: [8080](http://localhost:8080/), pass the password, you will see Jenkin UI
 ### 7. **Install Required Jenkins Plugins**
-![alt text](/assets/imgs/Plugins.png)
+![](/assets/imgs/Plugins.png)
 
 ### 8. **Authenticate Jenkins with Google Cloud (One-Time)**
 ```code
@@ -131,7 +130,7 @@ gcloud projects add-iam-policy-binding aide1-482206 \
   --role="roles/artifactregistry.writer"
 ```
 
-### 13. **Generate Service Account Key**, do not commit this file
+### 13. **Generate Service Account Key (do not commit and push this file)**
 ```code
 gcloud iam service-accounts keys create jenkins-gke.json \
   --iam-account jenkins-deployer@aide1-482206.iam.gserviceaccount.com
@@ -178,6 +177,7 @@ In Jenkin UI, configure Sonar configuration
 ![](/assets/imgs/Sonar_Jenkin_system_configuration.png)  
 
 
-### 17. **Setup great expectations**  
+### 17. **NeMo Guardrails**  
+This step is already done while deploy model-serving namespace.
 
-### n. **Commit and push 1 branch, observe the jenkins pipeline**
+### 18. **Commit and push 1 branch, observe the jenkins pipeline**
