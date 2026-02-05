@@ -92,8 +92,22 @@ class ExternalInferenceLLM(BaseLanguageModel):
         ]
         return LLMResult(generations=generations)
 
-    def invoke(self, input: str, **kwargs: Any) -> str:
+    def invoke(
+        self,
+        input: str,
+        config: Optional[RunnableConfig] = None,
+        **kwargs: Any,
+    ) -> str:
         return self._call(input, **kwargs)
+
+
+    async def ainvoke(
+        self,
+        input: str,
+        config: Optional[RunnableConfig] = None,
+        **kwargs: Any,
+    ) -> str:
+        return await self._acall(input, **kwargs)
 
     @staticmethod
     def _messages_to_prompt(messages: List[Any]) -> str:
