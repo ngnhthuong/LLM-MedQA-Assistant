@@ -20,7 +20,7 @@ pipeline {
     // Bump these intentionally when you want new releases
     RAG_VERSION   = '0.5.1'
     UI_VERSION    = '0.2.2'
-    INGEST_VERSION= '0.1.3'
+    INGEST_VERSION= '0.1.6'
 
     // ---------------- Helm ----------------
     HELM_RELEASE  = 'model-serving'
