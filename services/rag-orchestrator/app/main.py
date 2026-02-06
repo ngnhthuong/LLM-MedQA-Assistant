@@ -203,11 +203,11 @@ def chat(req: ChatRequest, request: Request):
                 # Check prompt before send
                 if GUARDRAILS_ENABLED:
                     with tracer.start_as_current_span("guardrails.evaluate") as span:
-                        span.set_attribute("guardrails.enabled", True)
+                        span.set_attribute("llm.provider", "nemo_guardrails")
                         answer = generate_with_guardrails(
-                            prompt=prompt,
-                            session_id=session_id,
-                        )
+                        user_message=req.message,
+                        grounded_prompt=prompt,
+                    )
                 else:
                     span.set_attribute("llm.provider", "kserve")
                     kserve = build_kserve_client_from_env()
