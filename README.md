@@ -339,11 +339,11 @@ The RAG Orchestrator is the core backend service of the MedQA platform. It coord
 ```code
 cd services/rag-orchestrator
 docker build -f Dockerfile \
-  -t us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.1 .
+  -t us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.2 .
 ```
 2. **Push Image to Artifact Registry**  
 ```
-docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.1
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.2
 ```
 
 ---

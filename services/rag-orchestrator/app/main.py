@@ -142,14 +142,18 @@ def chat(req: ChatRequest, request: Request):
             request.state.session_id = session_id
             root_span.set_attribute("session.id", session_id)
 
-            # append user message
-            session_store.append(session_id, "user", req.message)
+            # append user message + trace
+            with tracer.start_as_current_span("session.append_user"):
+                session_store.append(session_id, "user", req.message)
 
-            # load chat history
-            history = session_store.get_history(session_id)
+            # load chat history + trace
+            with tracer.start_as_current_span("session.load_history") as span:
+                history = session_store.get_history(session_id)
+                span.set_attribute("session.history_length", len(history))
 
-            # retrieve context (optional)
-            retriever = build_retriever_from_env()
+            # retrieve context
+            with tracer.start_as_current_span("retriever.build"):
+                retriever = build_retriever_from_env()
 
             with tracer.start_as_current_span("retrieval.vector_search") as span:
                 span.set_attribute("vector.db", "qdrant")
@@ -179,12 +183,16 @@ def chat(req: ChatRequest, request: Request):
             if not chunks:
                 RAG_EMPTY_CONTEXT_TOTAL.inc()
 
-            # build grounded prompt
-            prompt = build_prompt(
-                req.message,
-                chunks,
-                chat_history=history,
-            )
+            # build grounded prompt + trace
+            with tracer.start_as_current_span("prompt.build") as span:
+                span.set_attribute("prompt.history_turns", len(history))
+                span.set_attribute("prompt.context_chunks", len(chunks))
+                prompt = build_prompt(
+                    req.message,
+                    chunks,
+                    chat_history=history,
+                )
+                
             with tracer.start_as_current_span("llm.inference") as span:
                 span.set_attribute(
                     "llm.model",
@@ -194,12 +202,12 @@ def chat(req: ChatRequest, request: Request):
 
                 # Check prompt before send
                 if GUARDRAILS_ENABLED:
-                    span.set_attribute("llm.provider", "nemo_guardrails")
-                    # Let NeMo Guardrails control the LLM call & safety
-                    answer = generate_with_guardrails(
-                        user_message=req.message,
-                        grounded_prompt=prompt,
-                    )
+                    with tracer.start_as_current_span("guardrails.evaluate") as span:
+                        span.set_attribute("guardrails.enabled", True)
+                        answer = generate_with_guardrails(
+                            prompt=prompt,
+                            session_id=session_id,
+                        )
                 else:
                     span.set_attribute("llm.provider", "kserve")
                     kserve = build_kserve_client_from_env()
