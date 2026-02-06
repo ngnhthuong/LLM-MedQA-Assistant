@@ -1,4 +1,4 @@
-from __future__ import annotations
+# from __future__ import annotations
 
 import argparse
 import glob
@@ -13,6 +13,7 @@ from qdrant_client.http import models as qm
 from fastembed import TextEmbedding
 import uuid
 
+from .utils import read_file, normalize_whitespace
 
 # Optional GCS support (kept optional to avoid hard dependency if you don't need it)
 try:
@@ -28,21 +29,10 @@ class Chunk:
     metadata: Dict[str, Any]
 
 
-def _iter_local_files(path: str, patterns: List[str]) -> Iterable[str]:
+def iter_local_files(path: str, patterns: List[str]) -> Iterable[str]:
     for pat in patterns:
         yield from sorted(glob.glob(os.path.join(path, pat)))
 
-
-def _read_file(fp: str) -> str:
-    with open(fp, "r", encoding="utf-8", errors="ignore") as f:
-        return f.read()
-
-
-def _normalize_whitespace(s: str) -> str:
-    s = s.replace("\r\n", "\n").replace("\r", "\n")
-    s = re.sub(r"[ \t]+", " ", s)
-    s = re.sub(r"\n{3,}", "\n\n", s)
-    return s.strip()
 
 
 def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> List[str]:
@@ -51,7 +41,7 @@ def chunk_text(text: str, chunk_size: int = 900, overlap: int = 150) -> List[str
     - chunk_size: target size in characters
     - overlap: overlap between consecutive chunks
     """
-    text = _normalize_whitespace(text)
+    text = normalize_whitespace(text)
     if not text:
         return []
     if overlap >= chunk_size:
@@ -116,14 +106,14 @@ def ingest_local_path(
     chunk_size: int,
     overlap: int,
 ) -> List[Chunk]:
-    files = list(_iter_local_files(input_path, patterns))
+    files = list(iter_local_files(input_path, patterns))
     if not files:
         raise SystemExit(f"No matching files in {input_path} for patterns {patterns}")
 
     chunks: List[Chunk] = []
     for fp in files:
-        raw = _read_file(fp)
-        txt = _normalize_whitespace(raw)
+        raw = read_file(fp)
+        txt = normalize_whitespace(raw)
         rel = os.path.relpath(fp, input_path)
         doc_id = rel.replace(os.sep, "/")
         for idx, ch in enumerate(chunk_text(txt, chunk_size=chunk_size, overlap=overlap)):
@@ -142,20 +132,16 @@ def ingest_local_path(
             )
     return chunks
 
-
-def ingest_gcs_prefix(
-    gcs_uri: str,
-    collection: str,
-    source_name: str,
-    patterns: List[str],
-    chunk_size: int,
-    overlap: int,
-) -> List[Chunk]:
+def list_gcs_blobs(gcs_uri: str):
     if storage is None:
-        raise SystemExit("google-cloud-storage is not installed. Add it to requirements.txt to use --gcs-uri.")
+        raise SystemExit(
+            "google-cloud-storage is not installed. "
+            "Add it to requirements.txt to use --gcs-uri."
+        )
 
     if not gcs_uri.startswith("gs://"):
         raise SystemExit("--gcs-uri must start with gs://")
+
     _, _, rest = gcs_uri.partition("gs://")
     bucket_name, _, prefix = rest.partition("/")
     prefix = prefix.strip("/")
@@ -167,39 +153,78 @@ def ingest_gcs_prefix(
     if not blobs:
         raise SystemExit(f"No blobs found under {gcs_uri}")
 
-    # only include matching patterns (simple suffix match)
+    return bucket_name, blobs
+
+
+def resolve_allowed_suffixes(patterns: List[str]) -> List[str]:
     allowed_suffixes = []
     for p in patterns:
-        # support patterns like *.txt, *.md, *.jsonl
         if p.startswith("*."):
-            allowed_suffixes.append(p[1:])  # ".txt"
+            allowed_suffixes.append(p[1:])  # ".txt", ".md", ".jsonl"
+
     if not allowed_suffixes:
         allowed_suffixes = [".txt", ".md", ".jsonl"]
 
+    return allowed_suffixes
+
+def blob_to_chunks(
+    blob,
+    bucket_name: str,
+    source_name: str,
+    chunk_size: int,
+    overlap: int,
+) -> List[Chunk]:
+    raw = blob.download_as_text(encoding="utf-8", errors="ignore")
+    txt = normalize_whitespace(raw)
+    doc_id = blob.name
+
     chunks: List[Chunk] = []
-    for b in blobs:
-        name = b.name
-        if not any(name.endswith(suf) for suf in allowed_suffixes):
-            continue
-        raw = b.download_as_text(encoding="utf-8", errors="ignore")
-        txt = _normalize_whitespace(raw)
-        doc_id = name
-        for idx, ch in enumerate(chunk_text(txt, chunk_size=chunk_size, overlap=overlap)):
-            cid = f"{source_name}:{doc_id}#{idx}"
-            chunks.append(
-                Chunk(
-                    id=cid,
-                    text=ch,
-                    metadata={
-                        "source": source_name,
-                        "document": doc_id,
-                        "chunk_index": idx,
-                        "gcs_uri": f"gs://{bucket_name}/{name}",
-                    },
-                )
+    for idx, ch in enumerate(chunk_text(txt, chunk_size=chunk_size, overlap=overlap)):
+        cid = f"{source_name}:{doc_id}#{idx}"
+        chunks.append(
+            Chunk(
+                id=cid,
+                text=ch,
+                metadata={
+                    "source": source_name,
+                    "document": doc_id,
+                    "chunk_index": idx,
+                    "gcs_uri": f"gs://{bucket_name}/{blob.name}",
+                },
             )
+        )
+    return chunks
+
+def ingest_gcs_prefix(
+    gcs_uri: str,
+    collection: str,
+    source_name: str,
+    patterns: List[str],
+    chunk_size: int,
+    overlap: int,
+) -> List[Chunk]:
+
+    bucket_name, blobs = list_gcs_blobs(gcs_uri)
+    allowed_suffixes = resolve_allowed_suffixes(patterns)
+
+    chunks: List[Chunk] = []
+
+    for blob in blobs:
+        if not any(blob.name.endswith(suf) for suf in allowed_suffixes):
+            continue
+        chunks.extend(
+            blob_to_chunks(
+                blob,
+                bucket_name=bucket_name,
+                source_name=source_name,
+                chunk_size=chunk_size,
+                overlap=overlap,
+            )
+        )
+
     if not chunks:
         raise SystemExit(f"No matching .txt/.md/.jsonl blobs under {gcs_uri}")
+
     return chunks
 
 

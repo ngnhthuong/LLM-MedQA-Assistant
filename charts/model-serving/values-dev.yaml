@@ -91,7 +91,7 @@ qdrant:
       memory: 512Mi
 
 ingestion:
-  enabled: false   # turn ON only when you want to ingest
+  enabled: true   # turn ON only when you want to ingest
   image:
     repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor
     tag: "0.1.2"
