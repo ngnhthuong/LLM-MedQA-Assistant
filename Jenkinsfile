@@ -3,9 +3,9 @@ pipeline {
 
   environment {
     // ---------------- GCP / GKE ----------------
-    GCP_PROJECT   = 'aide1-482206'
+    GCP_PROJECT   = 'aide1-486601'
     GCP_REGION    = 'us-central1'
-    GKE_CLUSTER   = 'gke-medqa-autopilot'
+    GKE_CLUSTER   = 'gke-medqa'
 
     // ---------------- Artifact Registry ----------------
     REGISTRY      = 'us-central1-docker.pkg.dev'
@@ -20,7 +20,7 @@ pipeline {
     // Bump these intentionally when you want new releases
     RAG_VERSION   = '0.5.1'
     UI_VERSION    = '0.2.2'
-    INGEST_VERSION= '0.1.2'
+    INGEST_VERSION= '0.1.3'
 
     // ---------------- Helm ----------------
     HELM_RELEASE  = 'model-serving'

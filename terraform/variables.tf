@@ -5,7 +5,7 @@
 variable "project_id" {
   type        = string
   description = "GCP project ID"
-  default     = "aide1-482206"
+  default     = "aide1-486601"
 }
 
 variable "region" {
@@ -21,7 +21,7 @@ variable "region" {
 variable "cluster_name" {
   type        = string
   description = "Name of the GKE cluster"
-  default     = "gke-medqa-autopilot"
+  default     = "gke-medqa"
 }
 
 # -------------------------------
@@ -32,12 +32,12 @@ variable "node_locations" {
   description = "Zones where GKE nodes will run"
   type        = list(string)
   default     = [
-    "us-central1-a",
-    "us-central1-b",
-    "us-central1-c",
+    "us-central1-b"
   ]
 }
 
+# "us-central1-a",
+# "us-central1-c",
 # -------------------------------
 # Release channel
 # -------------------------------
@@ -113,13 +113,13 @@ variable "node_min_count" {
 variable "node_max_count" {
   type        = number
   description = "Maximum number of nodes in the primary node pool"
-  default     = 3
+  default     = 2
 }
 
 variable "node_disk_size_gb" {
   type        = number
   description = "Disk size (GB) for each node, important for ELK/Prometheus"
-  default     = 100
+  default     = 80
 }
 
 variable "node_disk_type" {

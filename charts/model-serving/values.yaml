@@ -15,13 +15,13 @@ ingress:
 # Default points to Artifact Registry. Override tag per env (dev/prod) or via Jenkins --set.
 streamlit:
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/streamlit-ui
     tag: latest
     pullPolicy: IfNotPresent
 
 rag-orchestrator:
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator
     tag: latest
     pullPolicy: IfNotPresent
 

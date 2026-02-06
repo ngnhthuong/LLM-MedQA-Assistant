@@ -99,7 +99,7 @@ From here, open link localhost: [8080](http://localhost:8080/), pass the passwor
 ```code
 docker exec -it jenkins bash
 gcloud auth login
-gcloud config set project aide1-482206
+gcloud config set project aide1-486601
 gcloud auth configure-docker us-central1-docker.pkg.dev
 ```
 ### 9. **Exit the container, restart jenkins**
@@ -121,19 +121,19 @@ gcloud iam service-accounts create jenkins-deployer \
 
 ### 12. **Grant Required IAM Roles**
 ```code
-gcloud projects add-iam-policy-binding aide1-482206 \
-  --member="serviceAccount:jenkins-deployer@aide1-482206.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding aide1-486601 \
+  --member="serviceAccount:jenkins-deployer@aide1-486601.iam.gserviceaccount.com" \
   --role="roles/container.developer"
 
-gcloud projects add-iam-policy-binding aide1-482206 \
-  --member="serviceAccount:jenkins-deployer@aide1-482206.iam.gserviceaccount.com" \
+gcloud projects add-iam-policy-binding aide1-486601 \
+  --member="serviceAccount:jenkins-deployer@aide1-486601.iam.gserviceaccount.com" \
   --role="roles/artifactregistry.writer"
 ```
 
 ### 13. **Generate Service Account Key (do not commit and push this file)**
 ```code
 gcloud iam service-accounts keys create jenkins-gke.json \
-  --iam-account jenkins-deployer@aide1-482206.iam.gserviceaccount.com
+  --iam-account jenkins-deployer@aide1-486601.iam.gserviceaccount.com
 ```
 ### 14. **In Jenkins UI store credentials in Jenkins**
 ![](/assets/imgs/Store_credential_in_jenkins.png)

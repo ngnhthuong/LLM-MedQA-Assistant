@@ -218,9 +218,16 @@ terraform apply
 ```
 5. **Optional: Clean up Subnetwork**  
 ```code
+gcloud container clusters delete gke-medqa \
+  --region us-central1 \
+  --project aide1-486601
+
 gcloud compute networks subnets delete gke-medqa-subnet \
   --region=us-central1 \
-  --project=aide1-482206
+  --project=aide1-486601
+
+gcloud compute networks delete gke-medqa-vpc \
+  --project=aide1-486601
 ```
 
 ---
@@ -229,9 +236,9 @@ After provisioning the infrastructure, this steps configures local environment t
 1. **Get Kubernetes Credentials**  
 Fetches the Kubernetes credentials for the specified GKE cluster and allows `kubectl` to authenticate and interact with the cluster 
 ```code
-gcloud container clusters get-credentials gke-medqa-autopilot \
+gcloud container clusters get-credentials gke-medqa \
   --region us-central1 \
-  --project aide1-482206
+  --project aide1-486601
 ```
 2. **Verify**  
 ```code
@@ -258,6 +265,7 @@ gcloud artifacts repositories list
 ### Buid Redis image
 Redis is used as the session and chat-history store for multi-run conversations in MedQA system. This steps builds a custom Redis image with persistence enable and pushes it to project's artifact registry so it can be pulled during deployment.  
 > Note: The Dockerfile.redis already exists in this repository. No additional file creation is required.  
+
 Redis Dockerfile:
 ```code
 # Dockerfile.redis
@@ -273,12 +281,12 @@ docker build -f Dockerfile.redis -t redis-custom:7.2 .
 2. **Tag Image for Artifact Registry**  
 ```
 docker tag redis-custom:7.2 \
-  us-central1-docker.pkg.dev/aide1-482206/llm-medqa/redis:7.2
+  us-central1-docker.pkg.dev/aide1-486601/llm-medqa/redis:7.2
 ```
 
 3. **Push Image to Artifact Registry**  
 ```code
-docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/redis:7.2
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/redis:7.2
 ```
 
 ---
@@ -299,11 +307,11 @@ docker build -f Dockerfile.qdrant -t qdrant-custom:1.11.0 .
 2. **Tag Image for Artifact Registry**  
 ```code
 docker tag qdrant-custom:1.11.0 \
-  us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant:1.11.0
+  us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant:1.11.0
 ```
 3. **Push Image to Artifact Registry**  
 ```code
-docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant:1.11.0
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant:1.11.0
 ```
 
 ---
@@ -312,16 +320,16 @@ The streamlit is used as a frontend for the MedQA system, providing an interacti
 1. **Build Streamlit UI Image**  
 ```code
 cd services/streamlit-ui
-docker build -t streamlit-ui:0.2.0 .
+docker build -t streamlit-ui:0.2.2 .
 ```
 2. **Tag Image for Artifact Registry**  
 ```code
-docker tag streamlit-ui:0.2.0 \
-  us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui:0.2.0
+docker tag streamlit-ui:0.2.2 \
+  us-central1-docker.pkg.dev/aide1-486601/llm-medqa/streamlit-ui:0.2.2
 ```
 3. **Push Image to Artifact Registry**  
 ```code
-docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui:0.2.0
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/streamlit-ui:0.2.2
 ```
 
 ---
@@ -331,11 +339,11 @@ The RAG Orchestrator is the core backend service of the MedQA platform. It coord
 ```code
 cd services/rag-orchestrator
 docker build -f Dockerfile \
-  -t us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator:0.1.8 .
+  -t us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.1 .
 ```
 2. **Push Image to Artifact Registry**  
 ```
-docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator:0.1.8
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.1
 ```
 
 ---
@@ -344,16 +352,16 @@ The Qdrant Ingestor is responsible for embedding medical documents and indexing 
 1. **Build Qdrant Ingestor Image**  
 ```code
 cd services/qdrant-ingestor
-docker build -t qdrant-ingestor:0.1.2 .
+docker build -t qdrant-ingestor:0.1.6 .
 ```
 2. **Tag Image for Artifact Registry**  
 ```code
-docker tag qdrant-ingestor:0.1.2 \
-  us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor:0.1.2
+docker tag qdrant-ingestor:0.1.6 \
+  us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant-ingestor:0.1.6
 ```
 3. **Push Image to Artifact Registry**  
 ```code
-docker push us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor:0.1.2
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant-ingestor:0.1.6
 ```
 
 ---

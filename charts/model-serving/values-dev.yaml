@@ -8,7 +8,7 @@ streamlit:
   enabled: true
 
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/streamlit-ui
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/streamlit-ui
     tag: "0.2.2"
     pullPolicy: IfNotPresent
 
@@ -30,7 +30,7 @@ streamlit:
 rag-orchestrator:
   enabled: true
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/rag-orchestrator
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator
     tag: "0.5.1"
   env:
     REDIS_HOST: redis
@@ -59,7 +59,7 @@ rag-orchestrator:
 redis:
   enabled: true
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/redis
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/redis
     tag: "7.2"
   resources:
     requests:
@@ -80,7 +80,7 @@ qdrant:
     vectorSize: "384" # must match with embedding model dimension, mine is BAAI/bge-small-en-v1.5 so it should be 384
     distance: "Cosine"
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant
     tag: "1.11.0"
   resources:
     requests:
@@ -93,8 +93,8 @@ qdrant:
 ingestion:
   enabled: true   # turn ON only when you want to ingest
   image:
-    repository: us-central1-docker.pkg.dev/aide1-482206/llm-medqa/qdrant-ingestor
-    tag: "0.1.2"
+    repository: us-central1-docker.pkg.dev/aide1-486601/llm-medqa/qdrant-ingestor
+    tag: "0.1.6"
     pullPolicy: IfNotPresent
 
   embeddingModel: BAAI/bge-small-en-v1.5
