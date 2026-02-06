@@ -8,10 +8,10 @@ from fastapi import Request
 logger = logging.getLogger("rag_api")
 logger.setLevel(logging.INFO)
 
-_handler = logging.StreamHandler()
+log_handler = logging.StreamHandler()
 # We log pure JSON so Logstash's json filter can parse it
-_handler.setFormatter(logging.Formatter("%(message)s"))
-logger.addHandler(_handler)
+log_handler.setFormatter(logging.Formatter("%(message)s"))
+logger.addHandler(log_handler)
 
 
 def _safe_getattr(obj: Any, name: str, default: Any = None) -> Any:

@@ -34,3 +34,9 @@ def readiness() -> Dict[str, bool]:
 
     # If no optional deps configured, we are ready
     return checks
+
+def liveness() -> Dict[str, str]:
+    """
+    Only check that the process is alive :>
+    """
+    return {"status": "alive"}

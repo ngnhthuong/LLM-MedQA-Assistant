@@ -15,6 +15,7 @@ class ExternalInferenceLLM(BaseLanguageModel):
     """
     LangChain 0.2.x compatible LLM for NeMo Guardrails 0.20.0
     backed by external inference (KServe).
+    Note: LangChain and NeMo Guardrails do not call inference directly.
     """
 
     def __init__(self, *args, **kwargs):
@@ -32,6 +33,9 @@ class ExternalInferenceLLM(BaseLanguageModel):
         stop: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> str:
+        """
+        Note: LangChain requires `_call` for sync execution paths.
+        """
         from .llm_client import build_kserve_client_from_env
 
         client = build_kserve_client_from_env()
@@ -50,6 +54,10 @@ class ExternalInferenceLLM(BaseLanguageModel):
         stop: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> str:
+        """
+        LangChain + NeMo Guardrails expect an async version of `_call`. 
+        However, our backend is not async, we can only delegate to `_call`
+        """
         return self._call(prompt, stop=stop, **kwargs)
 
     # ---- Required abstract methods (LangChain 0.2.x) ----
@@ -98,6 +106,11 @@ class ExternalInferenceLLM(BaseLanguageModel):
         config: Optional[RunnableConfig] = None,
         **kwargs: Any,
     ) -> str:
+        """
+        LangChain never calls `_call` directly.
+        It always calls `invoke()` in synchronous execution paths.
+        This approach adapts LangChain's Runnable interface to `_call`.
+        """
         return self._call(input, **kwargs)
 
 
@@ -107,6 +120,11 @@ class ExternalInferenceLLM(BaseLanguageModel):
         config: Optional[RunnableConfig] = None,
         **kwargs: Any,
     ) -> str:
+        """
+        Guardrails and async chains use `ainvoke()`.
+        This method bridges async execution to `_acall`.
+        Required for compatibility with LangChain's async engine.
+        """
         return await self._acall(input, **kwargs)
 
     @staticmethod

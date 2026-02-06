@@ -11,7 +11,7 @@ from opentelemetry import trace as otel_trace
 from opentelemetry import trace
 
 from .session import SessionStore
-from .health import readiness
+from .health import readiness, liveness
 from .logging import log_request
 from .retriever import build_retriever_from_env
 from .prompt import build_prompt
@@ -80,6 +80,10 @@ def health():
 def ready():
     return readiness()
 
+
+@app.get("/live")
+def live():
+    return liveness()
 
 # ---------------------------------------------------------------------
 # Prometheus metrics
