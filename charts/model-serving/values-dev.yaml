@@ -1,8 +1,13 @@
 global:
   namespace: model-serving
 
+# Namespace management
+namespace:
+  create: false
+
 ingress:
   enabled: true
+  path: /
 
 streamlit:
   enabled: true
