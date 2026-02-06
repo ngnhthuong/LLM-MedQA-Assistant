@@ -39,158 +39,107 @@ This repo is well suited to individuals who's learning MLOPs, and everyone on th
 ## Repo structure
 ```code
 LLM-MedQA-Assistant
-├── assets                                    # Static assets (images, screenshots, diagrams)
+├── assets/                                 # Static assets (images, screenshots, diagrams)
 │
-├── charts                                    # Helm charts for Kubernetes deployment
-│   ├── logging                               # ELK logging stack (Elasticsearch, Logstash, Kibana)
-│   │   ├── templates                         # Kubernetes manifests rendered by Helm
-│   │   │   ├── elasticsearch-svc.yaml        # Service definition for Elasticsearch
-│   │   │   ├── elasticsearch.yaml            # Elasticsearch StatefulSet
-│   │   │   ├── filebeat-config.yaml          # Filebeat configuration for log shipping
-│   │   │   ├── filebeat-rbac.yaml            # Filebeat RBAC
-│   │   │   ├── filebeat-serviceaccount.yaml  # ServiceAccount for Filebeat
-│   │   │   ├── filebeat.yaml                 # Filebeat DaemonSet
-│   │   │   ├── kibana-svc.yaml               # Service exposing Kibana
-│   │   │   ├── kibana.yaml                   # Kibana Deployment
-│   │   │   ├── logstash-config.yaml          # Logstash pipeline configuration
-│   │   │   ├── logstash-svc.yaml             # Service exposing Logstash
-│   │   │   └── logstash.yaml                 # Logstash Deployment
-│   │   ├── Chart.yaml                        # Helm chart metadata for logging stack
-│   │   └── values.yaml                       # Default values for ELK deployment
+├── charts/                                 # Helm charts for Kubernetes deployment
+│   ├── ingress-nginx/                      # Ingress NGINX controller chart (pulled from upstream)
+│   │   ├── templates/                      # Ingress controller Kubernetes manifests
+│   │   ├── Chart.yaml                      # Helm chart metadata
+│   │   └── values.yaml                     # Ingress controller configuration
 │   │
-│   ├── model-serving                         # Main application Helm chart (core MedQA platform)
-│   │   ├── charts                            # Packaged subcharts (dependencies)
-│   │   │   ├── qdrant-0.1.0.tgz              # Qdrant vector database subchart
-│   │   │   ├── rag-orchestrator-0.1.0.tgz    # RAG backend subchart
-│   │   │   ├── redis-0.1.0.tgz               # Redis subchart (sessions)
-│   │   │   └── streamlit-0.1.0.tgz           # Streamlit UI subchart
-│   │   ├── templates                         # Helm templates for platform-level resources
-│   │   │   ├── _helpers.tpl                  # Shared Helm helper templates
-│   │   │   ├── ingress-streamlit.yaml        # Ingress rules for Streamlit UI
-│   │   │   ├── ingress.yaml                  # General ingress configuration
-│   │   │   ├── namespace.yaml                # Namespace definition for model-serving
-│   │   │   ├── qdrant-ingestion-job.yaml     # Job for on-demand document ingestion
-│   │   │   └── qdrant-init-job.yaml          # Initialization job for Qdrant collections
-│   │   ├── Chart.lock                        # Locked dependency versions
-│   │   ├── Chart.yaml                        # Helm chart metadata
-│   │   ├── values-dev.yaml                   # Development environment configuration
-│   │   ├── values-prod.yaml                  # Production environment configuration
-│   │   └── values.yaml                       # Default shared values
+│   ├── logging/                            # ELK logging stack
+│   │   ├── templates/                      # Logging-related Kubernetes manifests
+│   │   │   ├── elasticsearch.yaml          # Elasticsearch StatefulSet
+│   │   │   ├── elasticsearch-svc.yaml      # Elasticsearch Service
+│   │   │   ├── filebeat.yaml               # Filebeat DaemonSet
+│   │   │   ├── filebeat-config.yaml        # Filebeat log collection config
+│   │   │   ├── filebeat-rbac.yaml          # Filebeat RBAC
+│   │   │   ├── filebeat-serviceaccount.yaml# Filebeat ServiceAccount
+│   │   │   ├── logstash.yaml               # Logstash Deployment
+│   │   │   ├── logstash-config.yaml        # Logstash pipeline config
+│   │   │   ├── logstash-svc.yaml           # Logstash Service
+│   │   │   ├── kibana.yaml                 # Kibana Deployment
+│   │   │   └── kibana-svc.yaml             # Kibana Service
+│   │   ├── Chart.yaml                      # Logging chart metadata
+│   │   └── values.yaml                     # Logging stack configuration
 │   │
-│   ├── monitoring                            # Monitoring stack (Prometheus + Grafana)
-│   │   ├── templates
-│   │   │   ├── clusterrole.yaml              # RBAC permissions for Prometheus
-│   │   │   ├── clusterrolebinding.yaml       # RBAC bindings
-│   │   │   ├── grafana-deploy.yaml           # Grafana Deployment
-│   │   │   ├── grafana-svc.yaml              # Grafana Service
-│   │   │   ├── namespace.yaml                # Monitoring namespace
-│   │   │   ├── prometheus-config.yaml        # Prometheus scrape configuration
-│   │   │   ├── prometheus-deploy.yaml        # Prometheus Deployment
-│   │   │   ├── prometheus-svc.yaml           # Prometheus Service
-│   │   │   └── serviceaccount.yaml           # ServiceAccount for monitoring components
-│   │   ├── Chart.yaml                        # Monitoring Helm chart metadata
-│   │   └── values.yaml                       # Monitoring configuration values
+│   ├── model-serving/                      # Main MedQA platform Helm chart
+│   │   ├── templates/                      # Platform-level Kubernetes resources
+│   │   │   ├── namespace.yaml              # model-serving namespace
+│   │   │   ├── ingress-streamlit.yaml      # Ingress rules for Streamlit UI
+│   │   │   ├── qdrant-init-job.yaml        # Job to initialize Qdrant collections
+│   │   │   └── qdrant-ingestion-job.yaml   # Job to ingest documents into Qdrant
+│   │   ├── Chart.yaml                      # Platform chart metadata
+│   │   ├── values-dev.yaml                 # Development environment values
+│   │   └── values-prod.yaml                # Production environment values
 │   │
-│   ├── qdrant                                # Standalone Qdrant Helm chart
-│   │   ├── templates
-│   │   │   ├── service.yaml                  # Qdrant Service
-│   │   │   ├── serviceaccount.yaml           # ServiceAccount for Qdrant
-│   │   │   └── statefulset.yaml              # Qdrant StatefulSet
-│   │   ├── Chart.yaml                        # Qdrant chart metadata
-│   │   └── values.yaml                       # Qdrant configuration
+│   ├── monitoring/                         # Prometheus & Grafana monitoring stack
+│   │   ├── templates/                      # Monitoring manifests
+│   │   ├── Chart.yaml                      # Monitoring chart metadata
+│   │   └── values.yaml                     # Monitoring configuration
 │   │
-│   ├── rag-orchestrator                      # Helm chart for RAG backend service
-│   │   ├── templates
-│   │   │   ├── deployment.yaml               # RAG orchestrator Deployment
-│   │   │   ├── hpa.yaml                      # Horizontal Pod Autoscaler
-│   │   │   ├── service.yaml                  # RAG service exposure
-│   │   │   └── serviceaccount.yaml           # ServiceAccount for RAG service
-│   │   ├── Chart.yaml                        # RAG orchestrator chart metadata
-│   │   └── values.yaml                       # RAG service configuration
+│   ├── qdrant/                             # Qdrant vector database Helm chart
+│   │   ├── templates/                      # Qdrant StatefulSet and Service
+│   │   ├── Chart.yaml                      # Qdrant chart metadata
+│   │   └── values.yaml                     # Qdrant configuration
 │   │
-│   ├── redis                                 # Redis Helm chart (session store)
-│   │   ├── templates
-│   │   │   ├── service.yaml                  # Redis Service
-│   │   │   ├── serviceaccount.yaml           # Redis ServiceAccount
-│   │   │   └── statefulset.yaml              # Redis StatefulSet
-│   │   ├── Chart.yaml                        # Redis chart metadata
-│   │   └── values.yaml                       # Redis configuration
+│   ├── rag-orchestrator/                   # RAG backend Helm chart
+│   │   ├── templates/                      # RAG service manifests
+│   │   ├── Chart.yaml                      # RAG chart metadata
+│   │   └── values.yaml                     # RAG configuration
 │   │
-│   ├── streamlit                             # Streamlit UI Helm chart
-│   │   ├── templates
-│   │   │   ├── deployment.yaml               # Streamlit Deployment
-│   │   │   ├── service.yaml                  # Streamlit Service
-│   │   │   └── serviceaccount.yaml           # Streamlit ServiceAccount
-│   │   ├── Chart.yaml                        # Streamlit chart metadata
-│   │   └── values.yaml                       # UI configuration
+│   ├── redis/                              # Redis session store Helm chart
+│   │   ├── templates/                      # Redis StatefulSet and Service
+│   │   ├── Chart.yaml                      # Redis chart metadata
+│   │   └── values.yaml                     # Redis configuration
 │   │
-│   ├── tracing                               # Distributed tracing stack (OpenTelemetry + Jaeger).
-│   │   ├── templates
-│   │   │   ├── namespace.yaml                # tracing namespace
-│   │   │   ├── otel-collector-config.yaml    # Receivers/exporters
-│   │   │   ├── otel-collector-deploy.yaml    # Collector Deployment
-│   │   │   ├── otel-collector-svc.yaml       # Collector Service
-│   │   │   ├── jaeger-deploy.yaml            # Jaeger backend
-│   │   │   └── jaeger-svc.yaml               # Jaeger UI + OTLP
-│   │   ├── Chart.yaml                        # tracing chart metadata
-│   │   └── values.yaml                       # tracing configuration
+│   ├── streamlit/                          # Streamlit UI Helm chart
+│   │   ├── templates/                      # Streamlit Deployment and Service
+│   │   ├── Chart.yaml                      # Streamlit chart metadata
+│   │   └── values.yaml                     # Streamlit configuration
 │   │
-│   └── README.md                             # Helm charts documentation
+│   └── tracing/                            # Distributed tracing stack (OpenTelemetry + Jaeger)
+│       ├── templates/                      # Tracing manifests
+│       ├── Chart.yaml                      # Tracing chart metadata
+│       └── values.yaml                     # Tracing configuration
 │
-├── ci                                        # CI/CD-related configuration
-│   ├── Dockerfile                            # Custom Jenkins Docker image
-│   ├── env                                   # Environment variables/templates for CI
-│   └── README.md                             # CI/CD documentation
-│
-├── services                                  # Application-level services
-│   ├── qdrant-ingestor                       # Document ingestion service
-│   │   ├── app
-│   │   │   ├── __init__.py                   # Python package initializer
-│   │   │   └── ingest.py                     # Ingestion logic (embedding + indexing)
-│   │   ├── data
-│   │   │   ├── intro.txt                     # Sample text data
-│   │   │   ├── medical_notes.jsonl           # Medical corpus (JSONL format)
-│   │   │   └── rad.md                        # Markdown medical content
-│   │   ├── Dockerfile                        # Ingestor service image definition
-│   │   └── requirements.txt                  # Python dependencies
+├── services/                               # Application services
+│   ├── qdrant-ingestor/                    # Document ingestion service
+│   │   ├── app/
+│   │   │   ├── ingest.py                   # Ingestion logic (read -> chunk -> embed -> upsert)
+│   │   │   └── utils.py                    # Helper functions (file read, text normalize)
+│   │   ├── data/                           # Sample input documents
+│   │   ├── Dockerfile                      # Ingestor image definition
+│   │   └── requirements.txt                # Ingestor dependencies
 │   │
-│   ├── rag-orchestrator                      # Core RAG backend service
-│   │   ├── app
-│   │   │   ├── __pycache__                   # Compiled Python cache (runtime)
-│   │   │   ├── health.py                     # Health/readiness endpoints
-│   │   │   ├── llm_client.py                 # Client for external LLM inference
-│   │   │   ├── logging.py                    # Structured logging configuration
-│   │   │   ├── main.py                       # FastAPI application entrypoint
-│   │   │   ├── metrics.py                    # Prometheus metrics (general)
-│   │   │   ├── metrics_llm.py                # LLM-specific metrics
-│   │   │   ├── prompt.py                     # Prompt construction logic
-│   │   │   ├── retriever.py                  # Vector retrieval from Qdrant
-│   │   │   ├── schemas.py                    # Request/response schemas
-│   │   │   ├── session.py                    # Redis-backed session management
-│   │   │   └── tracing.py                    # OpenTelemetry instrumentation
-│   │   ├── tests                             # Unit tests for RAG components
-│   │   ├── Dockerfile                        # RAG orchestrator image definition
-│   │   ├── pytest.ini                        # Pytest configuration
-│   │   └── requirements.txt                  # Python dependencies
+│   ├── rag-orchestrator/                   # Core RAG backend service
+│   │   ├── app/
+│   │   │   ├── main.py                     # FastAPI application entrypoint
+│   │   │   ├── health.py                   # Readiness / liveness endpoints
+│   │   │   ├── retriever.py                # Vector retrieval logic (Qdrant)
+│   │   │   ├── llm_client.py               # External LLM inference client
+│   │   │   ├── session.py                  # Redis-backed session handling
+│   │   │   ├── prompt.py                   # Prompt construction
+│   │   │   ├── guardrails_app.py           # NeMo Guardrails integration
+│   │   │   ├── metrics.py                  # Prometheus metrics
+│   │   │   ├── metrics_llm.py              # LLM-specific metrics
+│   │   │   └── tracing.py                  # OpenTelemetry instrumentation
+│   │   ├── Dockerfile                      # RAG service image
+│   │   └── requirements.txt                # RAG service dependencies
 │   │
-│   └── streamlit-ui                          # Frontend UI service
-│       ├── app.py                            # Streamlit application entrypoint
-│       ├── Dockerfile                        # UI image definition
-│       ├── requirements.txt                  # UI dependencies
-│       └── tracing.py                        # OpenTelemetry instrumentation
+│   └── streamlit-ui/                       # Frontend UI service
+│       ├── app.py                          # Streamlit application
+│       ├── Dockerfile                      # UI image definition
+│       └── requirements.txt                # UI dependencies
 │
-├── terraform                                 # Infrastructure-as-Code (GCP)
-│   ├── main.tf                               # Core Terraform resources (VPC, GKE)
-│   ├── outputs.tf                            # Exported infrastructure outputs
-│   ├── terraform.tfstate                     # Terraform state (local)
-│   ├── terraform.tfstate.backup              # Backup Terraform state
-│   └── variables.tf                          # Input variables
+├── terraform/                              # Infrastructure as Code (GCP)
+│   ├── main.tf                             # GKE, VPC resources
+│   ├── variables.tf                        # Terraform variables
+│   └── outputs.tf                          # Terraform outputs
 │
-├── Dockerfile.qdrant                         # Custom Qdrant image definition
-├── Dockerfile.redis                          # Custom Redis image (AOF enabled)
-├── jenkins-gke.json                          # Jenkins GCP service account key
-├── Jenkinsfile                               # CI/CD pipeline definition
-└── README.md                                 # Project documentation and setup guide
+├── Jenkinsfile                             # CI/CD pipeline definition
+└── README.md                               # Project documentation
+
 ```
 ---
 ## Guide to setup
@@ -339,11 +288,11 @@ The RAG Orchestrator is the core backend service of the MedQA platform. It coord
 ```code
 cd services/rag-orchestrator
 docker build -f Dockerfile \
-  -t us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.2 .
+  -t us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.3 .
 ```
 2. **Push Image to Artifact Registry**  
 ```
-docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.2
+docker push us-central1-docker.pkg.dev/aide1-486601/llm-medqa/rag-orchestrator:0.5.3
 ```
 
 ---
@@ -447,9 +396,17 @@ The NGINX Ingress Controller is reponsible for exposing internal Kubernetes serv
 helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
 helm repo update
 ```
+Or you want to pull it 
+```code
+helm pull ingress-nginx/ingress-nginx \
+  --version 4.14.3 \
+  --untar \
+  --untardir charts
+```
+Or I already commit the package, you only deploy it.  
 2. **Install / Upgrade NGINX Ingress Controller**  
 ```code
-helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+helm upgrade --install ingress-nginx charts/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
   --set controller.watchIngressWithoutClass=true \
@@ -648,7 +605,11 @@ kubectl get svc -n logging
 kubectl port-forward -n logging svc/kibana 5601:5601
 ```
 
-4. **Cleanup Logging Stack (Optional)**  
+4. **Setup logging management with index view**  
+`stack management` -> `Data view` -> `create data view` -> `filebeat-*`  
+![](assets/imgs/logging_screenshot.png)  
+
+5. **Cleanup Logging Stack (Optional)**  
 ```code
 kubectl delete namespace logging --wait=true
 ```
@@ -670,13 +631,16 @@ helm upgrade --install tracing charts/tracing --namespace tracing --create-names
 kubectl get pods -n tracing
 kubectl port-forward -n tracing deploy/jaeger 16686:16686
 ```
+![](assets/imgs/jaeger_screenshot.png)
+
 ---
 ## Guide to run
 To open Streamlit, get IP exposed by ingress-nginx
 ``` code
 kubectl get svc -n ingress-nginx
 ```
-![](assets/imgs/Open_Streamlit.png)
+![](assets/imgs/Open_Streamlit.png)  
+![](assets/imgs/streamlit_screenshot.png)  
 
 ---
 
