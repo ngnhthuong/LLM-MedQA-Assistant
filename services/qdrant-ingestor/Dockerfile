@@ -1,10 +1,12 @@
 FROM python:3.11-slim
 
-WORKDIR /app
 
-COPY requirements.txt .
+COPY services/qdrant-ingestor/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app /app/app
+COPY services/utils ./utils
+COPY services/qdrant-ingestor/app ./app
+COPY services/qdrant-ingestor/data ./data
 
-ENTRYPOINT ["python", "-m" ,"app.ingest"]
+ENV PYTHONPATH=/app
+CMD ["python", "-m", "app.ingest"]

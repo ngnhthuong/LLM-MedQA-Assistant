@@ -13,12 +13,12 @@ RUN apt-get update && apt-get install -y \
  && rm -rf /var/lib/apt/lists/*
 
 # ---- Python deps ----
-COPY requirements.txt .
+COPY services/streamlit-ui/requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---- Copy app ----
-COPY app.py .
-COPY tracing.py .
+COPY services/streamlit-ui/app.py ./app.py
+COPY services/utils ./utils
 
 # ---- Streamlit runtime config ----
 ENV STREAMLIT_SERVER_PORT=8501
