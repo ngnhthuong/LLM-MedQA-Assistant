@@ -12,7 +12,7 @@ from opentelemetry import trace
 
 from .session import SessionStore
 from .health import readiness, liveness
-from .logging import log_request
+from utils.logging import log_request
 from .retriever import build_retriever_from_env
 from .prompt import build_prompt
 from .llm_client import build_kserve_client_from_env
@@ -28,7 +28,7 @@ from .metrics import (
     RAG_INFLIGHT,
 )
 
-from .tracing import setup_tracing
+from utils.tracing import setup_tracing
 
 from .guardrails_app import (
     GUARDRAILS_ENABLED,

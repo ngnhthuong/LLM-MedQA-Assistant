@@ -540,7 +540,7 @@ helm dependency build charts/monitoring
 ```
 2. **Install Monitoring Stack**  
 ```code
-helm install monitoring charts/monitoring \
+helm upgrade --install monitoring charts/monitoring \
   --namespace monitoring \
   --create-namespace
 ```

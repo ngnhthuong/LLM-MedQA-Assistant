@@ -6,10 +6,8 @@ omit =
     app/health.py
     app/llm_client.py
     app/__init__.py
-    app/logging.py
     app/metrics.py
     app/metrics_llm.py
-    app/tracing.py
     app/guardrails_app.py
 
 [report]

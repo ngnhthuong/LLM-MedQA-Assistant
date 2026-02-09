@@ -23,6 +23,13 @@ spec:
             # enable OTLP and gRPC collector endpoints
             - name: COLLECTOR_OTLP_ENABLED
               value: "true"
+
+            # -----------------------------
+            # ingress params
+            # -----------------------------
+            - name: QUERY_BASE_PATH
+              value: "/jaeger"
+              
           ports:
             - name: query
               containerPort: 16686

@@ -13,7 +13,7 @@ from qdrant_client.http import models as qm
 from fastembed import TextEmbedding
 import uuid
 
-from .utils import read_file, normalize_whitespace
+from .ingest_utils import read_file, normalize_whitespace
 
 # Optional GCS support (kept optional to avoid hard dependency if you don't need it)
 try:

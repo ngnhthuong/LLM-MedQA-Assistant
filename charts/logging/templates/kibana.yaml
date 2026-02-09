@@ -23,6 +23,13 @@ spec:
               value: http://elasticsearch.logging.svc.cluster.local:9200
             - name: XPACK_SECURITY_ENABLED
               value: "false"
+            # -----------------------------
+            # ingress params
+            # -----------------------------
+            - name: SERVER_BASEPATH
+              value: "/kibana"
+            - name: SERVER_REWRITEBASEPATH
+              value: "true"
           ports:
             - containerPort: 5601
           resources:

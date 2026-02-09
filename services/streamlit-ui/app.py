@@ -5,7 +5,7 @@ import requests
 import logging
 import json
 import time
-from tracing import setup_tracing
+from utils.tracing import setup_tracing
 from opentelemetry import trace
 
 # -----------------------

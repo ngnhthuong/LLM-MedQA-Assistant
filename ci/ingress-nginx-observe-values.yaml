@@ -1,0 +1,12 @@
+controller:
+  name: observe
+  ingressClass: nginx-observe
+
+  ingressClassResource:
+    # this creates a separate IngressClass for logging, monitoring, tracing
+    name: nginx-observe
+    enabled: true
+    default: false   # Don't set true here :>
+
+  service:
+    type: LoadBalancer
