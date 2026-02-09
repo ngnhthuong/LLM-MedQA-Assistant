@@ -132,36 +132,39 @@ pipeline {
     // --------------------------------------------------
     stage('Build & Push rag-orchestrator') {
       steps {
-        dir('services/rag-orchestrator') {
-          sh '''
-            docker build -t ${RAG_IMAGE}:${RAG_VERSION} .
-            docker push ${RAG_IMAGE}:${RAG_VERSION}
-          '''
-        }
+        sh '''
+          docker build \
+            -f services/rag-orchestrator/Dockerfile \
+            -t ${RAG_IMAGE}:${RAG_VERSION} \
+            .
+          docker push ${RAG_IMAGE}:${RAG_VERSION}
+        '''
       }
     }
 
     // --------------------------------------------------
     stage('Build & Push streamlit-ui') {
       steps {
-        dir('services/streamlit-ui') {
-          sh '''
-            docker build -t ${UI_IMAGE}:${UI_VERSION} .
-            docker push ${UI_IMAGE}:${UI_VERSION}
-          '''
-        }
+        sh '''
+          docker build \
+            -f services/streamlit-ui/Dockerfile \
+            -t ${UI_IMAGE}:${UI_VERSION} \
+            .
+          docker push ${UI_IMAGE}:${UI_VERSION}
+        '''
       }
     }
 
     // --------------------------------------------------
     stage('Build & Push qdrant-ingestor') {
       steps {
-        dir('services/qdrant-ingestor') {
-          sh '''
-            docker build -t ${INGEST_IMAGE}:${INGEST_VERSION} .
-            docker push ${INGEST_IMAGE}:${INGEST_VERSION}
-          '''
-        }
+        sh '''
+          docker build \
+            -f services/qdrant-ingestor/Dockerfile \
+            -t ${INGEST_IMAGE}:${INGEST_VERSION} \
+            .
+          docker push ${INGEST_IMAGE}:${INGEST_VERSION}
+        '''
       }
     }
 
