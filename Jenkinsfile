@@ -18,9 +18,9 @@ pipeline {
 
     // ---------------- Image versions (SOURCE OF TRUTH) ----------------
     // Bump these intentionally when you want new releases
-    RAG_VERSION   = '0.5.5'
+    RAG_VERSION   = '0.5.6'
     UI_VERSION    = '0.2.4'
-    INGEST_VERSION= '0.1.8'
+    INGEST_VERSION= '0.1.9'
 
     // ---------------- Helm ----------------
     HELM_RELEASE  = 'model-serving'
