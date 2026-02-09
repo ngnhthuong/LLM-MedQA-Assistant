@@ -3,9 +3,9 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: kibana
-  namespace: {{ .Values.namespace }}
-  annotations:
-    kubernetes.io/ingress.class: "nginx-observe"
+  namespace: {{.Values.namespace}}
+  # annotations:
+  #   kubernetes.io/ingress.class: "nginx-observe"
 spec:
   ingressClassName: nginx-observe
   rules:

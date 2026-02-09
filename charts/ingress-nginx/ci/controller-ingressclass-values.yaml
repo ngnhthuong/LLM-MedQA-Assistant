@@ -12,4 +12,4 @@ controller:
     default: true
     controllerValue: k8s.io/custom-nginx
 
-  watchIngressWithoutClass: true
+  watchIngressWithoutClass: false

@@ -396,13 +396,13 @@ helm pull ingress-nginx/ingress-nginx \
   --untar \
   --untardir charts
 ```
-Or I already commit the package, you only deploy it.  
+Or I already commit the package, remember to set `watchIngressWithoutClass: false`, then you can deploy it.  
 2. **Install / Upgrade NGINX Ingress Controller**  
 ```code
 helm upgrade --install ingress-nginx charts/ingress-nginx \
   --namespace ingress-nginx \
   --create-namespace \
-  --set controller.watchIngressWithoutClass=true \
+  --set controller.watchIngressWithoutClass=false \
   --set controller.service.externalTrafficPolicy=Cluster \
   --set controller.admissionWebhooks.enabled=true
 ```

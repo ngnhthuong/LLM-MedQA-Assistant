@@ -1,12 +1,22 @@
 controller:
   name: observe
+
+  # legacy/annotation class (fine to keep)
   ingressClass: nginx-observe
 
+  # critical: do NOT accept ingresses without a class
+  watchIngressWithoutClass: false
+
+  # critical: unique controller class identity
+  extraArgs:
+    controller-class: "k8s.io/ingress-nginx-observe"
+    ingress-class: "nginx-observe"
+
   ingressClassResource:
-    # this creates a separate IngressClass for logging, monitoring, tracing
     name: nginx-observe
     enabled: true
-    default: false   # Don't set true here :>
+    default: false
+    controllerValue: "k8s.io/ingress-nginx-observe"
 
   service:
     type: LoadBalancer
