@@ -26,6 +26,7 @@
 - [Guide to run](#guide-to-run)
 - [Conclusion](#conclusion)
 - [Reference](#reference)
+- [Citation](#citation)
 ---
 ## Introduction
 LLM-MedQA-Assisstant is a cloud-native Medical Question Answering platform bulit around a scalable Retrieval-Agumented Generation (RAG) architecture. The system in a Streamlit frontend, a FastAPI based RAG orchestrator, Qdrant vector search for medical knowledge retrieval, and an external fine-tuned medical LLM inference server, with Redis-backed chat history for multi-run conversations. The entire stack is developed on Kubernetes, automated by Terraform, Helm and Jenkins CI/CD, and fully observable through Prometheus, Grafana, ELK logging and tracing pipeline.  
@@ -657,3 +658,17 @@ This repository demonstrates an end-to-end, production-grade LLM-powered Medical
 
 ## Reference
 This repo idea is inspired by various projects from section `Hall of frame` of the community named "FSDS", check out their page: [LINK](https://fullstackdatascience.com/hall-of-fame)
+
+---
+
+## Citation  
+If you use LLM-MedQA-Assistant in your research, please cite it as follows, thank you:
+```code
+@software{LLMMedQAAssistant2026,
+  author  = {Le, Huy Phuong},
+  title   = {LLM-MedQA-Assistant: A RAG-Based Medical Question Answering System},
+  year    = {2026},
+  url     = {https://github.com/lehuyphuong/LLM-MedQA-Assistant},
+  note    = {Kubernetes-native architecture with RAG orchestration, observability (ELK, Prometheus, Jaeger), and CI/CD}
+}
+```
